@@ -10,7 +10,15 @@ function getApp(): App {
     return app;
   }
 
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+  // Handle escaped newlines from env vars (Vercel stores them literally)
+  if (privateKey.includes('\\n')) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+  // Strip surrounding quotes if present
+  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+    privateKey = privateKey.slice(1, -1).replace(/\\n/g, '\n');
+  }
 
   app = initializeApp({
     credential: cert({
@@ -29,24 +37,50 @@ export function getDb(): Firestore {
   return db;
 }
 
-/* ───────── Collection helpers ───────── */
+/* ───────── Tenant-scoped helpers ───────── */
 
-export function garaCollection() {
-  return getDb().collection('gare');
+export function tenantDoc(tenantId: string) {
+  return getDb().collection('tenants').doc(tenantId);
 }
 
-export function garaDoc(garaId: string) {
-  return garaCollection().doc(garaId);
+export function garaCollection(tenantId: string) {
+  return tenantDoc(tenantId).collection('gare');
 }
 
-export function conversationDoc(garaId: string) {
-  return getDb().collection('conversations').doc(garaId);
+export function garaDoc(tenantId: string, garaId: string) {
+  return garaCollection(tenantId).doc(garaId);
 }
 
-export function documentsDoc(garaId: string) {
-  return getDb().collection('gara_documents').doc(garaId);
+export function conversationDoc(tenantId: string, garaId: string) {
+  return tenantDoc(tenantId).collection('conversations').doc(garaId);
 }
 
-export function companyProfileDoc() {
-  return getDb().collection('workspace').doc('company_profile');
+export function documentsDoc(tenantId: string, garaId: string) {
+  return tenantDoc(tenantId).collection('gara_documents').doc(garaId);
+}
+
+export function companyProfileDoc(tenantId: string) {
+  return tenantDoc(tenantId).collection('workspace').doc('company_profile');
+}
+
+/* ───────── Auth collections (global) ───────── */
+
+export function usersCollection() {
+  return getDb().collection('users');
+}
+
+export function userDoc(email: string) {
+  return usersCollection().doc(email.toLowerCase());
+}
+
+export function invitationsCollection() {
+  return getDb().collection('invitations');
+}
+
+export function magicLinksCollection() {
+  return getDb().collection('magic_links');
+}
+
+export function tenantsCollection() {
+  return getDb().collection('tenants');
 }
