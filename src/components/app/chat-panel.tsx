@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Upload, Sparkles, ClipboardList, AlertTriangle, FileOutput, Loader2, Bot, User } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Upload, Sparkles, ClipboardList, AlertTriangle, FileOutput, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import type { ChatMessage } from '@/lib/types';
 import type { SessionPayload } from '@/lib/session';
 
@@ -105,27 +105,35 @@ export function ChatPanel({ garaId, conversation, loading, onSendMessage, onUplo
               <p className="text-sm text-slate-400">Nessun messaggio. Inizia caricando documenti o descrivendo la gara.</p>
             </div>
           )}
+          <AnimatePresence initial={false}>
           {conversation.map((msg, i) => (
-            <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}
+            >
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
                 msg.role === 'assistant'
                   ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white'
-                  : 'bg-slate-700 text-white'
+                  : 'bg-gradient-to-br from-slate-600 to-slate-800 text-white'
               }`}>
                 {msg.role === 'assistant' ? <Bot className="w-4 h-4" /> : <User className="w-4 h-4" />}
               </div>
-              <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+              <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                  : 'bg-slate-50 border border-slate-100 text-slate-800'
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/15'
+                  : 'bg-white border border-slate-200/80 text-slate-800 shadow-sm'
               }`}>
                 <div className="whitespace-pre-wrap">{msg.text}</div>
                 <div className={`text-[10px] mt-1.5 ${msg.role === 'user' ? 'text-blue-200' : 'text-slate-400'}`}>
                   {new Date(msg.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
+          </AnimatePresence>
           {loading && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shrink-0 shadow-sm">
@@ -148,12 +156,14 @@ export function ChatPanel({ garaId, conversation, loading, onSendMessage, onUplo
       {/* Quick Actions */}
       <div className="px-6 py-2.5 flex gap-2 flex-wrap border-t border-slate-100 bg-slate-50/50">
         {quickActions.map((action) => (
-          <Badge key={action.label} variant="outline"
-            className="cursor-pointer hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all py-1.5 px-3 gap-1.5 rounded-lg border-slate-200 text-slate-600"
-            onClick={action.action}>
+          <button
+            key={action.label}
+            onClick={action.action}
+            className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-full text-[11px] font-medium text-slate-600 bg-white border border-slate-200 hover:border-blue-300 hover:text-blue-700 hover:bg-blue-50/80 hover:shadow-sm transition-all hover-lift"
+          >
             <action.icon className="w-3 h-3" />
-            <span className="text-[11px] font-medium">{action.label}</span>
-          </Badge>
+            {action.label}
+          </button>
         ))}
       </div>
 

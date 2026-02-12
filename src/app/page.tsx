@@ -235,12 +235,12 @@ export default function HomePage() {
 
   if (sessionLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-white">
-        <div className="text-center">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-white font-bold text-lg">PG</span>
+      <div className="h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/40 to-indigo-50/30 relative noise">
+        <div className="text-center animate-fade-in-up">
+          <div className="w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-xl shadow-blue-500/25 animate-pulse">
+            <span className="text-white font-bold text-xl">PG</span>
           </div>
-          <p className="text-sm text-slate-500">Caricamento...</p>
+          <p className="text-sm font-medium text-slate-500">Caricamento...</p>
         </div>
       </div>
     );
@@ -277,7 +277,7 @@ export default function HomePage() {
       </div>
 
       {/* Right Sidebar */}
-      <div className="w-[480px] shrink-0 border-l border-slate-200">
+      <div className="w-[480px] shrink-0 border-l border-slate-200 h-full overflow-hidden">
         <SidebarRight garaId={activeGaraId} output={output} onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill} />
       </div>
 
