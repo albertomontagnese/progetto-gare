@@ -11,13 +11,16 @@ function getApp(): App {
   }
 
   let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-  // Handle escaped newlines from env vars (Vercel stores them literally)
-  if (privateKey.includes('\\n')) {
-    privateKey = privateKey.replace(/\\n/g, '\n');
-  }
   // Strip surrounding quotes if present
-  if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
-    privateKey = privateKey.slice(1, -1).replace(/\\n/g, '\n');
+  if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
+      (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+    privateKey = privateKey.slice(1, -1);
+  }
+  // Handle escaped newlines (\n as literal two-char sequence)
+  privateKey = privateKey.replace(/\\n/g, '\n');
+  // Ensure it starts/ends with proper PEM markers
+  if (!privateKey.includes('-----BEGIN')) {
+    console.error('GOOGLE_PRIVATE_KEY does not contain PEM header. Key length:', privateKey.length);
   }
 
   app = initializeApp({

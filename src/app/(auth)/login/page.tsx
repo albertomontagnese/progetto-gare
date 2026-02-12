@@ -1,15 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, Mail, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Loader2, Mail, ArrowRight, CheckCircle2, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [quickLoading, setQuickLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -30,6 +34,26 @@ export default function LoginPage() {
       setError((err as Error).message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleQuickAccess = async () => {
+    if (!email.trim()) { setError('Inserisci la tua email prima'); return; }
+    setQuickLoading(true);
+    setError('');
+    try {
+      const res = await fetch('/api/auth/dev-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name: email.split('@')[0], companyName: 'La mia azienda' }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Errore');
+      router.push('/');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setQuickLoading(false);
     }
   };
 
@@ -94,8 +118,18 @@ export default function LoginPage() {
                   )}
                 </Button>
 
+                <div className="relative my-2">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-3 text-[11px] text-slate-400">oppure</span>
+                </div>
+
+                <Button type="button" variant="outline" className="w-full h-10 text-sm gap-2 border-slate-200 hover:bg-blue-50 hover:border-blue-200" onClick={handleQuickAccess} disabled={quickLoading}>
+                  {quickLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 text-amber-500" />}
+                  Accesso rapido (senza email)
+                </Button>
+
                 <p className="text-[11px] text-slate-400 text-center leading-relaxed">
-                  Cliccando &quot;Continua&quot; riceverai un link di accesso via email. Nessuna password richiesta.
+                  L&apos;accesso rapido crea un account direttamente. Il magic link via email e in arrivo.
                 </p>
               </form>
             )}
