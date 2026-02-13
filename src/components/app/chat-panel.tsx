@@ -2,10 +2,9 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Send, Upload, Sparkles, ClipboardList, AlertTriangle, FileOutput, Bot, User } from 'lucide-react';
+import { Send, Upload, Plus, Sparkles, ClipboardList, AlertTriangle, FileOutput, Bot, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { ChatMessage } from '@/lib/types';
 import type { SessionPayload } from '@/lib/session';
 
@@ -22,9 +21,15 @@ interface ChatPanelProps {
 export function ChatPanel({ garaId, conversation, loading, onSendMessage, onUpload, onStartGuidedQA, session }: ChatPanelProps) {
   const [message, setMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const scrollToBottom = useCallback(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, []);
+  const scrollToBottom = useCallback(() => {
+    // Small delay to let new messages render
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    });
+  }, []);
   useEffect(() => { scrollToBottom(); }, [conversation, scrollToBottom]);
 
   const handleSend = () => {
@@ -86,18 +91,20 @@ export function ChatPanel({ garaId, conversation, loading, onSendMessage, onUplo
   return (
     <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="px-6 py-3.5 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-sm">
+      <div className="px-6 py-3 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur-sm shrink-0">
         <div>
           <h2 className="font-bold text-[15px] text-slate-900">{garaId.replace('gara-', 'Gara ')}</h2>
           <p className="text-[11px] text-slate-400">{conversation.length} messaggi</p>
         </div>
-        <Button variant="outline" size="sm" onClick={onUpload} className="gap-1.5 text-xs h-8 rounded-lg border-slate-200 hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700">
-          <Upload className="w-3.5 h-3.5" /> Carica documenti
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={onUpload} size="sm" className="gap-1.5 text-xs h-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm">
+            <Plus className="w-3.5 h-3.5" /> Carica documenti gara
+          </Button>
+        </div>
       </div>
 
-      {/* Messages */}
-      <ScrollArea className="flex-1">
+      {/* Messages - native scroll */}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto min-h-0">
         <div className="px-6 py-5 space-y-5">
           {conversation.length === 0 && (
             <div className="text-center py-16">
@@ -151,7 +158,7 @@ export function ChatPanel({ garaId, conversation, loading, onSendMessage, onUplo
           )}
           <div ref={messagesEndRef} />
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Quick Actions */}
       <div className="px-6 py-2.5 flex gap-2 flex-wrap border-t border-slate-100 bg-slate-50/50">
