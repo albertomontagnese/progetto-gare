@@ -71,9 +71,12 @@ export async function POST(
     step = 'classify';
     const classified = await classifyDocumentsWithLLM({ garaId, documents: saved });
 
-    // Save document metadata to Firestore (small, no base64)
+    // Append to existing documents (don't replace)
     step = 'save-documents';
-    await documentsDoc(session.tenantId, garaId).set({ documents: classified });
+    const existingDocsSnap = await documentsDoc(session.tenantId, garaId).get();
+    const existingDocs: GaraDocument[] = existingDocsSnap.exists ? existingDocsSnap.data()?.documents || [] : [];
+    const allDocs = [...existingDocs, ...classified];
+    await documentsDoc(session.tenantId, garaId).set({ documents: allDocs });
 
     // Update output
     step = 'update-output';
@@ -82,7 +85,7 @@ export async function POST(
       ? normalizeOutputJson(garaId, garaSnap.data())
       : normalizeOutputJson(garaId, defaultOutputForGara(garaId));
 
-    const taggedOutput = mergeDocumentsIntoOutput(currentOutput, classified, 'da_confermare');
+    const taggedOutput = mergeDocumentsIntoOutput(currentOutput, allDocs, 'da_confermare');
     await garaDoc(session.tenantId, garaId).set(taggedOutput);
 
     // Update conversation
@@ -101,7 +104,7 @@ export async function POST(
       assistant_reply: 'Classificazione documenti completata. Serve conferma manuale.',
       output_json: taggedOutput,
       conversation,
-      files: classified,
+      files: allDocs,
       classification_required: true,
     });
   } catch (error) {

@@ -158,8 +158,8 @@ export default function HomePage() {
         { method: 'POST', body: JSON.stringify({ files: filePayloads }) }
       );
       setClassifiedDocs(data.files); setUploadPhase('classify');
-      setUploadedFilePayloads(filePayloads);
-      setGaraDocs(data.files); // update docs panel
+      setUploadedFilePayloads((prev) => [...prev, ...filePayloads]); // accumulate
+      setGaraDocs(data.files); // update docs panel (now includes all docs)
       setOutput(data.output_json); setConversation(data.conversation);
       toast.success(`${files.length} documenti caricati`);
     } catch (err) { toast.error('Errore upload: ' + (err as Error).message); }
