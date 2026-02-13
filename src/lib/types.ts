@@ -144,6 +144,17 @@ export interface GaraOutput {
   [key: string]: unknown; // allow dynamic extra sections
 }
 
+export interface CompanyDocument {
+  name: string;
+  stored_as: string;
+  size: number;
+  type: string;
+  category: string;
+  gcs_path: string;
+  key_facts: string[];
+  uploaded_at: string;
+}
+
 export interface CompanyProfile {
   azienda: {
     nome: string;
@@ -156,6 +167,7 @@ export interface CompanyProfile {
   cv: string[];
   procedure: string[];
   evidenze: string[];
+  company_documents?: CompanyDocument[];
 }
 
 export interface GaraSummary {

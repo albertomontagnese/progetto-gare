@@ -18,6 +18,8 @@ interface SidebarRightProps {
   onAttachFile?: (itemIndex: number, files: File[]) => void;
   onManualAnswer?: (itemIndex: number) => void;
   onAssignCv?: (role: string, cvName: string) => void;
+  onRunMatch?: () => void;
+  matching?: boolean;
 }
 
 /* ────────── Helpers ────────── */
@@ -303,7 +305,7 @@ function DocClassificationBadge({ output }: { output: GaraOutput }) {
 
 /* ────────── Main Component ────────── */
 
-export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, onAttachFile, onManualAnswer }: SidebarRightProps) {
+export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, onAttachFile, onManualAnswer, onRunMatch, matching }: SidebarRightProps) {
   if (!garaId || !output) {
     return (
       <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50 to-blue-50/30">
@@ -373,6 +375,20 @@ export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, 
           </div>
         </div>
       </div>
+
+      {/* Match Button */}
+      {checklist.length > 0 && onRunMatch && (
+        <div className="px-4 py-2.5 border-b border-slate-200/80 bg-white/90 shrink-0">
+          <button onClick={onRunMatch} disabled={matching}
+            className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white text-[12px] font-semibold shadow-md shadow-purple-500/20 transition-all disabled:opacity-60">
+            {matching ? (
+              <><Sparkles className="w-4 h-4 animate-spin" /> Matching in corso...</>
+            ) : (
+              <><Sparkles className="w-4 h-4" /> Match Requisiti vs Documenti Aziendali</>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto min-h-0">

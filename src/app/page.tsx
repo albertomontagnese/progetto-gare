@@ -56,6 +56,7 @@ export default function HomePage() {
   const [uploading, setUploading] = useState(false);
   // Keep file payloads in memory between upload and confirm (avoids Firestore size limits)
   const [uploadedFilePayloads, setUploadedFilePayloads] = useState<Array<{ name: string; type: string; size: number; content_base64: string }>>([]);
+  const [matching, setMatching] = useState(false);
 
   // Load session
   useEffect(() => {
@@ -220,6 +221,21 @@ export default function HomePage() {
     }).catch((err) => toast.error('Errore: ' + (err as Error).message));
   }, [activeGaraId, output]);
 
+  const handleRunMatch = useCallback(async () => {
+    if (!activeGaraId) return;
+    setMatching(true);
+    toast.info('Matching requisiti con documenti aziendali...');
+    try {
+      const data = await api<{ output_json: GaraOutput; summary: { covered: number; partial: number; uncovered: number }; message: string }>(
+        `/api/gare/${encodeURIComponent(activeGaraId)}/match`,
+        { method: 'POST' }
+      );
+      setOutput(data.output_json);
+      toast.success(data.message);
+    } catch (err) { toast.error('Errore matching: ' + (err as Error).message); }
+    finally { setMatching(false); }
+  }, [activeGaraId]);
+
   const handleStartGuidedQA = useCallback(async () => {
     if (!activeGaraId) return;
     setChatLoading(true);
@@ -317,7 +333,8 @@ export default function HomePage() {
       <div className="w-[480px] shrink-0 border-l border-slate-200 h-full overflow-hidden">
         <SidebarRight garaId={activeGaraId} output={output}
           onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill}
-          onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer} />
+          onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer}
+          onRunMatch={handleRunMatch} matching={matching} />
       </div>
 
       {activeGaraId && (
