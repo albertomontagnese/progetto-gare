@@ -186,6 +186,40 @@ export default function HomePage() {
     } catch (err) { toast.error('Errore: ' + (err as Error).message); }
   }, [activeGaraId]);
 
+  const handleAttachFile = useCallback(async (itemIndex: number, files: File[]) => {
+    if (!activeGaraId || !files.length) return;
+    toast.info('Caricamento allegati...');
+    try {
+      const payloads = await Promise.all(files.map(async (f) => ({
+        name: f.name, type: f.type, size: f.size, content_base64: await fileToBase64(f),
+      })));
+      const data = await api<{ output_json: GaraOutput; conversation: ChatMessage[] }>(
+        `/api/gare/${encodeURIComponent(activeGaraId)}/checklist/attach`,
+        { method: 'POST', body: JSON.stringify({ item_index: itemIndex, files: payloads }) }
+      );
+      setOutput(data.output_json); setConversation(data.conversation);
+      toast.success('Allegati caricati');
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+  }, [activeGaraId]);
+
+  const handleManualAnswer = useCallback((itemIndex: number) => {
+    if (!activeGaraId || !output) return;
+    const item = output.checklist_operativa?.items?.[itemIndex];
+    if (!item) return;
+    const answer = window.prompt(`Inserisci risposta per: ${item.requisito}`);
+    if (!answer?.trim()) return;
+    api<{ output_json: GaraOutput; conversation: ChatMessage[] }>(
+      `/api/gare/${encodeURIComponent(activeGaraId)}/qa/answer`,
+      { method: 'POST', body: JSON.stringify({
+        question: { id: `manual_${itemIndex}`, item_index: itemIndex, requisito: item.requisito, domanda: item.requisito },
+        answer: answer.trim(),
+      }) }
+    ).then((data) => {
+      setOutput(data.output_json); setConversation(data.conversation);
+      toast.success('Risposta registrata');
+    }).catch((err) => toast.error('Errore: ' + (err as Error).message));
+  }, [activeGaraId, output]);
+
   const handleStartGuidedQA = useCallback(async () => {
     if (!activeGaraId) return;
     setChatLoading(true);
@@ -281,7 +315,9 @@ export default function HomePage() {
 
       {/* Right Sidebar */}
       <div className="w-[480px] shrink-0 border-l border-slate-200 h-full overflow-hidden">
-        <SidebarRight garaId={activeGaraId} output={output} onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill} />
+        <SidebarRight garaId={activeGaraId} output={output}
+          onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill}
+          onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer} />
       </div>
 
       {activeGaraId && (
