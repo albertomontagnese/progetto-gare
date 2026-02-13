@@ -3,9 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { SidebarLeft } from '@/components/app/sidebar-left';
 import { ChatPanel } from '@/components/app/chat-panel';
 import { SidebarRight } from '@/components/app/sidebar-right';
+import { DraftEditor } from '@/components/app/draft-editor';
 import { UploadDialog } from '@/components/app/upload-dialog';
 import { CompanyProfilePanel } from '@/components/app/company-profile-panel';
 import { DocumentsPanel } from '@/components/app/documents-panel';
@@ -59,7 +61,8 @@ export default function HomePage() {
   const [uploadedFilePayloads, setUploadedFilePayloads] = useState<Array<{ name: string; type: string; size: number; content_base64: string }>>([]);
   const [matching, setMatching] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
-  const [sidebarExpanded, setSidebarExpanded] = useState(false);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [generatingSection, setGeneratingSection] = useState<string | null>(null);
   const [garaDocs, setGaraDocs] = useState<GaraDocument[]>([]);
   const [companyDocs, setCompanyDocs] = useState<Array<{ name: string; stored_as: string; category: string; key_facts: string[]; size: number }>>([]);
 
@@ -81,13 +84,26 @@ export default function HomePage() {
     try {
       const data = await api<{ gare: GaraSummary[] }>('/api/gare');
       setGare(data.gare);
+      return data.gare;
     } catch (err) {
       if ((err as Error).message === 'UNAUTHORIZED') { router.push('/login'); return; }
       console.error(err);
     }
   }, [router]);
 
-  useEffect(() => { if (!sessionLoading && session) loadGare(); }, [sessionLoading, session, loadGare]);
+  // Load gare on mount and auto-select the first (latest) one
+  useEffect(() => {
+    if (!sessionLoading && session) {
+      loadGare().then((gareList) => {
+        if (gareList?.length && !activeGaraId) {
+          setActiveGaraId(gareList[0].garaId);
+          setActiveView('chat');
+          loadGaraData(gareList[0].garaId);
+        }
+      });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionLoading, session]);
 
   const loadGaraData = useCallback(async (garaId: string) => {
     try {
@@ -287,6 +303,38 @@ export default function HomePage() {
     } catch (err) { toast.error('Errore: ' + (err as Error).message); }
   }, [activeGaraId]);
 
+  const handleSaveDraft = useCallback(async (sections: Array<{ id: string; title: string; content: string }>) => {
+    if (!activeGaraId) return;
+    setDraftSaving(true);
+    try {
+      // Save draft sections to the gara output
+      const currentSnap = output;
+      if (currentSnap) {
+        await api(`/api/gare/${encodeURIComponent(activeGaraId)}`, {
+          method: 'POST',
+          body: JSON.stringify({ output_json: { ...currentSnap, draft_offerta: { sections, updated_at: new Date().toISOString() } } }),
+        });
+        toast.success('Bozza salvata');
+      }
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+    finally { setDraftSaving(false); }
+  }, [activeGaraId, output]);
+
+  const handleGenerateSection = useCallback(async (sectionId: string) => {
+    if (!activeGaraId) return;
+    setGeneratingSection(sectionId);
+    try {
+      const data = await api<{ assistant_reply: string; output_json: GaraOutput; conversation: ChatMessage[] }>(
+        `/api/gare/${encodeURIComponent(activeGaraId)}/chat`,
+        { method: 'POST', body: JSON.stringify({ message: `Genera il contenuto per la sezione "${sectionId}" dell'offerta tecnica. Usa i requisiti coperti, le evidenze aziendali e il profilo azienda per scrivere un testo professionale e dettagliato per questa sezione. Rispondi SOLO con il testo della sezione, senza JSON.` }) }
+      );
+      setConversation(data.conversation);
+      // The AI reply IS the section content - user can copy it
+      toast.success('Sezione generata - copia il testo dal chat nella sezione');
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+    finally { setGeneratingSection(null); }
+  }, [activeGaraId]);
+
   const handleRunMatch = useCallback(async () => {
     if (!activeGaraId) return;
     setMatching(true);
@@ -367,8 +415,8 @@ export default function HomePage() {
 
   return (
     <div className="h-screen w-screen flex overflow-hidden bg-slate-50">
-      {/* Left Sidebar */}
-      <div className="w-[264px] shrink-0 h-full overflow-hidden">
+      {/* Left Sidebar - fixed */}
+      <div className="w-[250px] shrink-0 h-full overflow-hidden">
         <SidebarLeft
           gare={gare}
           activeGaraId={activeGaraId}
@@ -384,50 +432,63 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Center: Chat + optional Documents panel */}
-      <div className="flex-1 min-w-0 h-full overflow-hidden flex">
-        {activeView === 'company' ? (
-          <div className="flex-1 min-w-0 h-full overflow-hidden">
-            <CompanyProfilePanel profile={companyProfile} onSave={handleSaveCompanyProfile} onUploadCv={handleUploadCv} saving={saving} />
-          </div>
-        ) : (
-          <>
-            {/* Chat */}
-            <div className="flex-1 min-w-0 h-full overflow-hidden">
-              <ChatPanel garaId={activeGaraId} conversation={conversation} loading={chatLoading}
-                onSendMessage={handleSendMessage}
-                onToggleDocs={() => setShowDocs((p) => !p)}
-                onStartGuidedQA={handleStartGuidedQA} session={session}
-                garaDocs={garaDocs} companyDocs={companyDocs} />
-            </div>
-            {/* Documents side panel */}
-            {showDocs && activeGaraId && (
-              <div className="w-[320px] shrink-0 h-full overflow-hidden border-l border-slate-200">
-                <DocumentsPanel
-                  garaId={activeGaraId}
-                  garaDocs={garaDocs}
-                  companyDocs={companyDocs}
-                  onUploadGaraDocs={(files) => { handleUpload(files); }}
-                  onUploadCompanyDocs={handleUploadCompanyDocs}
-                  uploading={uploading}
-                  onConfirmClassification={(docs) => handleConfirmClassification(docs)}
-                  classificationPending={uploadPhase === 'confirming'}
-                />
+      {/* Main area - resizable panels */}
+      {activeView === 'company' ? (
+        <div className="flex-1 min-w-0 h-full overflow-hidden">
+          <CompanyProfilePanel profile={companyProfile} onSave={handleSaveCompanyProfile} onUploadCv={handleUploadCv} saving={saving} />
+        </div>
+      ) : (
+        <PanelGroup direction="horizontal" className="flex-1 h-full">
+          {/* Chat + Docs */}
+          <Panel defaultSize={35} minSize={25}>
+            <div className="h-full flex overflow-hidden">
+              <div className="flex-1 min-w-0 h-full overflow-hidden">
+                <ChatPanel garaId={activeGaraId} conversation={conversation} loading={chatLoading}
+                  onSendMessage={handleSendMessage}
+                  onToggleDocs={() => setShowDocs((p) => !p)}
+                  onStartGuidedQA={handleStartGuidedQA} session={session}
+                  garaDocs={garaDocs} companyDocs={companyDocs} />
               </div>
-            )}
-          </>
-        )}
-      </div>
+              {showDocs && activeGaraId && (
+                <div className="w-[280px] shrink-0 h-full overflow-hidden border-l border-slate-200">
+                  <DocumentsPanel garaId={activeGaraId} garaDocs={garaDocs} companyDocs={companyDocs}
+                    onUploadGaraDocs={handleUpload} onUploadCompanyDocs={handleUploadCompanyDocs}
+                    uploading={uploading} onConfirmClassification={handleConfirmClassification}
+                    classificationPending={uploadPhase === 'confirming'} />
+                </div>
+              )}
+            </div>
+          </Panel>
 
-      {/* Right Sidebar - expandable */}
-      <div className={`${sidebarExpanded ? 'w-[700px]' : 'w-[480px]'} shrink-0 border-l border-slate-200 h-full overflow-hidden transition-all duration-300`}>
-        <SidebarRight garaId={activeGaraId} output={output}
-          onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill}
-          onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer}
-          onRunMatch={handleRunMatch} matching={matching}
-          onEditRequisito={handleEditRequisito} onDeleteRequisito={handleDeleteRequisito} onAddRequisito={handleAddRequisito}
-          expanded={sidebarExpanded} onToggleExpand={() => setSidebarExpanded((p) => !p)} />
-      </div>
+          <PanelResizeHandle className="w-[6px] bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors cursor-col-resize flex items-center justify-center group">
+            <div className="w-1 h-8 bg-slate-300 group-hover:bg-blue-400 rounded-full transition-colors" />
+          </PanelResizeHandle>
+
+          {/* Requisiti Dashboard */}
+          <Panel defaultSize={30} minSize={20}>
+            <div className="h-full overflow-hidden">
+              <SidebarRight garaId={activeGaraId} output={output}
+                onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill}
+                onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer}
+                onRunMatch={handleRunMatch} matching={matching}
+                onEditRequisito={handleEditRequisito} onDeleteRequisito={handleDeleteRequisito} onAddRequisito={handleAddRequisito} />
+            </div>
+          </Panel>
+
+          <PanelResizeHandle className="w-[6px] bg-slate-100 hover:bg-blue-200 active:bg-blue-300 transition-colors cursor-col-resize flex items-center justify-center group">
+            <div className="w-1 h-8 bg-slate-300 group-hover:bg-blue-400 rounded-full transition-colors" />
+          </PanelResizeHandle>
+
+          {/* Draft Offerta Tecnica */}
+          <Panel defaultSize={35} minSize={20}>
+            <div className="h-full overflow-hidden">
+              <DraftEditor garaId={activeGaraId} output={output}
+                onSaveDraft={handleSaveDraft} onGenerateSection={handleGenerateSection}
+                saving={draftSaving} generating={generatingSection} />
+            </div>
+          </Panel>
+        </PanelGroup>
+      )}
 
       {activeGaraId && (
         <UploadDialog open={uploadOpen} onClose={() => { setUploadOpen(false); setUploadPhase('upload'); }}

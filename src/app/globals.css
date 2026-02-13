@@ -108,6 +108,11 @@
   word-break: break-word;
 }
 
+/* Resizable panel handles */
+[data-panel-resize-handle-id] {
+  transition: background-color 0.15s ease;
+}
+
 /* Glassmorphism utility */
 .glass {
   background: rgba(255, 255, 255, 0.7);
