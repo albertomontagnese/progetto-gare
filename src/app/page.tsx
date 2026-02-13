@@ -221,6 +221,41 @@ export default function HomePage() {
     }).catch((err) => toast.error('Errore: ' + (err as Error).message));
   }, [activeGaraId, output]);
 
+  const handleEditRequisito = useCallback(async (itemIndex: number, updates: Record<string, unknown>) => {
+    if (!activeGaraId) return;
+    try {
+      const data = await api<{ output_json: GaraOutput }>(
+        `/api/gare/${encodeURIComponent(activeGaraId)}/checklist/edit`,
+        { method: 'POST', body: JSON.stringify({ action: 'update', item_index: itemIndex, item: updates }) }
+      );
+      setOutput(data.output_json);
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+  }, [activeGaraId]);
+
+  const handleDeleteRequisito = useCallback(async (itemIndex: number) => {
+    if (!activeGaraId) return;
+    try {
+      const data = await api<{ output_json: GaraOutput }>(
+        `/api/gare/${encodeURIComponent(activeGaraId)}/checklist/edit`,
+        { method: 'POST', body: JSON.stringify({ action: 'delete', item_index: itemIndex }) }
+      );
+      setOutput(data.output_json);
+      toast.success('Requisito eliminato');
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+  }, [activeGaraId]);
+
+  const handleAddRequisito = useCallback(async (requisito: string) => {
+    if (!activeGaraId) return;
+    try {
+      const data = await api<{ output_json: GaraOutput }>(
+        `/api/gare/${encodeURIComponent(activeGaraId)}/checklist/edit`,
+        { method: 'POST', body: JSON.stringify({ action: 'add', item: { requisito } }) }
+      );
+      setOutput(data.output_json);
+      toast.success('Requisito aggiunto');
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+  }, [activeGaraId]);
+
   const handleRunMatch = useCallback(async () => {
     if (!activeGaraId) return;
     setMatching(true);
@@ -334,7 +369,8 @@ export default function HomePage() {
         <SidebarRight garaId={activeGaraId} output={output}
           onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill}
           onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer}
-          onRunMatch={handleRunMatch} matching={matching} />
+          onRunMatch={handleRunMatch} matching={matching}
+          onEditRequisito={handleEditRequisito} onDeleteRequisito={handleDeleteRequisito} onAddRequisito={handleAddRequisito} />
       </div>
 
       {activeGaraId && (

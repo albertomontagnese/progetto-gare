@@ -20,6 +20,9 @@ interface SidebarRightProps {
   onAssignCv?: (role: string, cvName: string) => void;
   onRunMatch?: () => void;
   matching?: boolean;
+  onEditRequisito?: (itemIndex: number, updates: Partial<ChecklistItem>) => void;
+  onDeleteRequisito?: (itemIndex: number) => void;
+  onAddRequisito?: (requisito: string) => void;
 }
 
 /* ────────── Helpers ────────── */
@@ -130,14 +133,18 @@ function CollapsibleSection({ name, children, defaultOpen = false, count }: {
 
 /* ────────── Requisito Card (full-featured like old app) ────────── */
 
-function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onManualAnswer }: {
+function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onManualAnswer, onEdit, onDelete }: {
   item: ChecklistItem; index: number;
   onProgress: (p: 'todo' | 'wip' | 'done') => void;
   onAutofill: () => void;
   onAttachFile?: (files: File[]) => void;
   onManualAnswer?: () => void;
+  onEdit?: (updates: Partial<ChecklistItem>) => void;
+  onDelete?: () => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(item.requisito);
   const styles = {
     todo: { bg: 'from-red-50 to-rose-50/30', border: 'border-red-200/60', accent: 'border-l-red-500', badge: 'bg-red-100 text-red-700', badgeLabel: 'Da fare', selectClass: 'text-red-700' },
     wip: { bg: 'from-amber-50 to-yellow-50/30', border: 'border-amber-200/60', accent: 'border-l-amber-500', badge: 'bg-amber-100 text-amber-700', badgeLabel: 'In corso', selectClass: 'text-amber-700' },
@@ -153,7 +160,18 @@ function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onMa
 
       {/* Title + Badge */}
       <div className="flex items-start justify-between gap-2">
-        <p className="text-[12px] font-semibold text-slate-800 leading-snug flex-1">{item.requisito || 'Requisito'}</p>
+        {editing ? (
+          <div className="flex-1 flex gap-1.5">
+            <input value={editText} onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { onEdit?.({ requisito: editText }); setEditing(false); } if (e.key === 'Escape') setEditing(false); }}
+              className="flex-1 text-[12px] font-semibold text-slate-800 bg-white border border-blue-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-400" autoFocus />
+            <button onClick={() => { onEdit?.({ requisito: editText }); setEditing(false); }}
+              className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 hover:bg-blue-100">OK</button>
+          </div>
+        ) : (
+          <p className="text-[12px] font-semibold text-slate-800 leading-snug flex-1 cursor-pointer hover:text-blue-700"
+            onClick={() => setEditing(true)} title="Clicca per modificare">{item.requisito || 'Requisito'}</p>
+        )}
         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${s.badge}`}>{s.badgeLabel}</span>
       </div>
 
@@ -233,6 +251,12 @@ function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onMa
             <Sparkles className="w-3 h-3" /> Auto-compila
           </button>
         )}
+        {onDelete && (
+          <button onClick={() => { if (confirm('Eliminare questo requisito?')) onDelete(); }}
+            className="text-[10px] font-medium text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/50 rounded-lg px-2 py-1 transition-all ml-auto">
+            Elimina
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -305,7 +329,8 @@ function DocClassificationBadge({ output }: { output: GaraOutput }) {
 
 /* ────────── Main Component ────────── */
 
-export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, onAttachFile, onManualAnswer, onRunMatch, matching }: SidebarRightProps) {
+export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, onAttachFile, onManualAnswer, onRunMatch, matching, onEditRequisito, onDeleteRequisito, onAddRequisito }: SidebarRightProps) {
+  const [newReqText, setNewReqText] = useState('');
   if (!garaId || !output) {
     return (
       <div className="flex items-center justify-center h-full bg-gradient-to-br from-slate-50 to-blue-50/30">
@@ -407,6 +432,8 @@ export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, 
                     onAutofill={() => onAutofill(i)}
                     onAttachFile={onAttachFile ? (files) => onAttachFile(i, files) : undefined}
                     onManualAnswer={onManualAnswer ? () => onManualAnswer(i) : undefined}
+                    onEdit={onEditRequisito ? (updates) => onEditRequisito(i, updates) : undefined}
+                    onDelete={onDeleteRequisito ? () => onDeleteRequisito(i) : undefined}
                   />
                 ))}
               </div>
@@ -414,6 +441,20 @@ export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, 
               <p className="text-xs text-slate-400 text-center py-4">
                 Nessun requisito ancora. Carica documenti e conferma la classificazione per estrarre i requisiti.
               </p>
+            )}
+            {/* Add requisito */}
+            {onAddRequisito && (
+              <div className="mt-3 flex gap-1.5">
+                <input value={newReqText} onChange={(e) => setNewReqText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && newReqText.trim()) { onAddRequisito(newReqText.trim()); setNewReqText(''); } }}
+                  placeholder="Aggiungi requisito..."
+                  className="flex-1 text-[11px] bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-blue-300 focus:border-blue-300" />
+                <button onClick={() => { if (newReqText.trim()) { onAddRequisito(newReqText.trim()); setNewReqText(''); } }}
+                  disabled={!newReqText.trim()}
+                  className="text-[10px] font-medium text-white bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg px-3 py-1.5 disabled:opacity-40 transition-all">
+                  + Aggiungi
+                </button>
+              </div>
             )}
           </CollapsibleSection>
 
