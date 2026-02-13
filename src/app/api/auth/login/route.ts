@@ -20,6 +20,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, message: 'Magic link inviato' });
   } catch (error) {
     console.error('Login error:', error);
-    return NextResponse.json({ error: 'Errore invio email' }, { status: 500 });
+    return NextResponse.json({ error: `Errore invio email: ${(error as Error).message || 'Errore sconosciuto'}` }, { status: 500 });
   }
 }

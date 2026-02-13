@@ -8,6 +8,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ text });
   } catch (error) {
     console.error('POST analyze error:', error);
-    return NextResponse.json({ error: 'Errore' }, { status: 500 });
+    return NextResponse.json({ error: `Errore analisi: ${(error as Error).message || 'Errore sconosciuto'}` }, { status: 500 });
   }
 }

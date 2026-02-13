@@ -20,6 +20,6 @@ export async function GET() {
       return NextResponse.json({ error: 'Non autenticato' }, { status: 401 });
     }
     console.error('Team error:', error);
-    return NextResponse.json({ error: 'Errore' }, { status: 500 });
+    return NextResponse.json({ error: `Errore team: ${(error as Error).message || 'Errore sconosciuto'}` }, { status: 500 });
   }
 }

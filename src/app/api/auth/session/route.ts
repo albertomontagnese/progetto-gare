@@ -28,6 +28,6 @@ export async function DELETE() {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Logout error:', error);
-    return NextResponse.json({ error: 'Errore logout' }, { status: 500 });
+    return NextResponse.json({ error: `Errore logout: ${(error as Error).message || 'Errore sconosciuto'}` }, { status: 500 });
   }
 }
