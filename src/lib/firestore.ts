@@ -10,17 +10,25 @@ function getApp(): App {
     return app;
   }
 
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
-  // Strip surrounding quotes if present
-  if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
-      (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
-    privateKey = privateKey.slice(1, -1);
+  // Try GOOGLE_PRIVATE_KEY_BASE64 first (recommended for Vercel - avoids newline issues)
+  // Falls back to GOOGLE_PRIVATE_KEY with escaped-newline handling
+  let privateKey = '';
+  const b64Key = process.env.GOOGLE_PRIVATE_KEY_BASE64;
+  if (b64Key) {
+    privateKey = Buffer.from(b64Key, 'base64').toString('utf8');
+  } else {
+    privateKey = process.env.GOOGLE_PRIVATE_KEY || '';
+    // Strip surrounding quotes
+    if ((privateKey.startsWith('"') && privateKey.endsWith('"')) ||
+        (privateKey.startsWith("'") && privateKey.endsWith("'"))) {
+      privateKey = privateKey.slice(1, -1);
+    }
+    // Handle escaped newlines
+    privateKey = privateKey.replace(/\\n/g, '\n');
   }
-  // Handle escaped newlines (\n as literal two-char sequence)
-  privateKey = privateKey.replace(/\\n/g, '\n');
-  // Ensure it starts/ends with proper PEM markers
+
   if (!privateKey.includes('-----BEGIN')) {
-    console.error('GOOGLE_PRIVATE_KEY does not contain PEM header. Key length:', privateKey.length);
+    console.error('[Firestore] Private key missing PEM header. Check GOOGLE_PRIVATE_KEY_BASE64 or GOOGLE_PRIVATE_KEY env var.');
   }
 
   app = initializeApp({
