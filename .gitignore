@@ -37,10 +37,10 @@ env.local
 # backup of old project
 _backup/
 
-# old data dirs
-gare/
-workspace/
-documenti_aziendali/
+# old data dirs (root-only, not src/app/api/gare/)
+/gare/
+/workspace/
+/documenti_aziendali/
 
 # vercel
 .vercel
