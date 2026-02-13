@@ -54,6 +54,8 @@ export default function HomePage() {
   const [uploadPhase, setUploadPhase] = useState<'upload' | 'classify' | 'confirming'>('upload');
   const [classifiedDocs, setClassifiedDocs] = useState<GaraDocument[]>([]);
   const [uploading, setUploading] = useState(false);
+  // Keep file payloads in memory between upload and confirm (avoids Firestore size limits)
+  const [uploadedFilePayloads, setUploadedFilePayloads] = useState<Array<{ name: string; type: string; size: number; content_base64: string }>>([]);
 
   // Load session
   useEffect(() => {
@@ -139,6 +141,7 @@ export default function HomePage() {
         { method: 'POST', body: JSON.stringify({ files: filePayloads }) }
       );
       setClassifiedDocs(data.files); setUploadPhase('classify');
+      setUploadedFilePayloads(filePayloads); // keep in memory for confirm step
       setOutput(data.output_json); setConversation(data.conversation);
       toast.success(`${files.length} documenti caricati`);
     } catch (err) { toast.error('Errore upload: ' + (err as Error).message); }
@@ -151,13 +154,13 @@ export default function HomePage() {
     try {
       const data = await api<{ output_json: GaraOutput; conversation: ChatMessage[] }>(
         `/api/gare/${encodeURIComponent(activeGaraId)}/document-classification/confirm`,
-        { method: 'POST', body: JSON.stringify({ documents: docs }) }
+        { method: 'POST', body: JSON.stringify({ documents: docs, rawFiles: uploadedFilePayloads }) }
       );
       setOutput(data.output_json); setConversation(data.conversation);
-      setUploadOpen(false); setUploadPhase('upload'); setClassifiedDocs([]); loadGare();
+      setUploadOpen(false); setUploadPhase('upload'); setClassifiedDocs([]); setUploadedFilePayloads([]); loadGare();
       toast.success('Estrazione completata');
     } catch (err) { toast.error('Errore: ' + (err as Error).message); setUploadPhase('classify'); }
-  }, [activeGaraId, loadGare]);
+  }, [activeGaraId, loadGare, uploadedFilePayloads]);
 
   const handleChecklistProgress = useCallback(async (itemIndex: number, progress: 'todo' | 'wip' | 'done') => {
     if (!activeGaraId) return;

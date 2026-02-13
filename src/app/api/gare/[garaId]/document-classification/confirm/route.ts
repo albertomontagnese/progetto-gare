@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { garaDoc, conversationDoc, documentsDoc, fileContentDoc } from '@/lib/firestore';
+import { garaDoc, conversationDoc, documentsDoc } from '@/lib/firestore';
 import { tryDownloadFile } from '@/lib/gcs';
 import { requireSession } from '@/lib/session';
 import {
@@ -22,6 +22,10 @@ export async function POST(
     const body = await request.json().catch(() => ({}));
     const updates = Array.isArray(body?.documents) ? body.documents : [];
 
+    // Raw files sent from the frontend (kept in browser memory between upload and confirm)
+    const clientRawFiles: Array<{ name: string; type: string; size: number; content_base64: string }> =
+      Array.isArray(body?.rawFiles) ? body.rawFiles : [];
+
     // Get current docs
     step = 'load-docs';
     const docsSnap = await documentsDoc(session.tenantId, garaId).get();
@@ -37,47 +41,32 @@ export async function POST(
     });
     await documentsDoc(session.tenantId, garaId).set({ documents: confirmedDocs });
 
-    // Load raw files for LLM analysis
-    // Priority: 1) separate file_contents collection, 2) inline content_base64, 3) GCS download
+    // Build raw files for LLM analysis
+    // Priority: 1) files sent from frontend, 2) GCS download
     step = 'load-raw-files';
     const rawFiles: Array<{ name: string; type: string; size: number; content_base64: string }> = [];
-    for (const doc of confirmedDocs.slice(0, 6)) {
-      // Try file_contents subcollection first (stored separately during upload)
-      const fcSnap = await fileContentDoc(session.tenantId, garaId, doc.stored_as).get();
-      if (fcSnap.exists && fcSnap.data()?.content_base64) {
-        rawFiles.push({
-          name: doc.name,
-          type: doc.type || 'application/octet-stream',
-          size: doc.size,
-          content_base64: fcSnap.data()!.content_base64,
-        });
-        continue;
-      }
-      // Try inline content_base64 (legacy)
-      if (doc.content_base64) {
-        rawFiles.push({
-          name: doc.name,
-          type: doc.type || 'application/octet-stream',
-          size: doc.size,
-          content_base64: doc.content_base64,
-        });
-        continue;
-      }
-      // Fall back to GCS download
-      if (doc.gcs_path) {
-        const buffer = await tryDownloadFile(doc.gcs_path);
-        if (buffer) {
-          rawFiles.push({
-            name: doc.name,
-            type: doc.type || 'application/octet-stream',
-            size: doc.size || buffer.length,
-            content_base64: buffer.toString('base64'),
-          });
+
+    if (clientRawFiles.length > 0) {
+      // Frontend re-sent the file bytes — use them directly
+      rawFiles.push(...clientRawFiles.slice(0, 6));
+      console.log(`[confirm] Using ${rawFiles.length} raw files from frontend request`);
+    } else {
+      // Fallback: try to download from GCS
+      for (const doc of confirmedDocs.slice(0, 6)) {
+        if (doc.gcs_path) {
+          const buffer = await tryDownloadFile(doc.gcs_path);
+          if (buffer) {
+            rawFiles.push({
+              name: doc.name,
+              type: doc.type || 'application/octet-stream',
+              size: doc.size || buffer.length,
+              content_base64: buffer.toString('base64'),
+            });
+          }
         }
       }
+      console.log(`[confirm] Loaded ${rawFiles.length} raw files from GCS (out of ${confirmedDocs.length} docs)`);
     }
-
-    console.log(`[confirm] Loaded ${rawFiles.length} raw files for AI extraction (out of ${confirmedDocs.length} docs)`);
 
     step = 'extract-with-llm';
     const garaSnap = await garaDoc(session.tenantId, garaId).get();
@@ -93,14 +82,6 @@ export async function POST(
     step = 'save-output';
     const finalOutput = mergeDocumentsIntoOutput(llmResult.output_json, confirmedDocs, 'confermato');
     await garaDoc(session.tenantId, garaId).set(finalOutput);
-
-    // After extraction, clean up file contents to save Firestore space
-    step = 'cleanup-file-contents';
-    for (const doc of confirmedDocs) {
-      try {
-        await fileContentDoc(session.tenantId, garaId, doc.stored_as).delete();
-      } catch { /* ignore cleanup errors */ }
-    }
 
     step = 'update-conversation';
     const convoSnap = await conversationDoc(session.tenantId, garaId).get();

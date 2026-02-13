@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "functions": {
+    "src/app/api/gare/[garaId]/upload/route.ts": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
+    "src/app/api/gare/[garaId]/document-classification/confirm/route.ts": {
+      "maxDuration": 120,
+      "memory": 1024
+    },
+    "src/app/api/gare/[garaId]/chat/route.ts": {
+      "maxDuration": 60
+    }
+  }
+}

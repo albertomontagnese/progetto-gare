@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { garaDoc, conversationDoc, documentsDoc, fileContentDoc } from '@/lib/firestore';
+import { garaDoc, conversationDoc, documentsDoc } from '@/lib/firestore';
 import { tryUploadFile } from '@/lib/gcs';
 import { requireSession } from '@/lib/session';
 import {
@@ -32,7 +32,6 @@ export async function POST(
 
     step = 'process-files';
     const saved: GaraDocument[] = [];
-    const fileContents: Array<{ storedAs: string; base64: string }> = [];
 
     for (const file of files) {
       const originalName = sanitizeFileName(file?.name || 'documento');
@@ -52,11 +51,6 @@ export async function POST(
         textPreview = buffer.toString('utf8').slice(0, 4000);
       }
 
-      // Keep base64 for separate storage (for AI extraction during confirm)
-      if (buffer.length < 5_000_000) {
-        fileContents.push({ storedAs: targetName, base64: encoded });
-      }
-
       saved.push({
         name: originalName,
         stored_as: targetName,
@@ -68,28 +62,18 @@ export async function POST(
         rationale: '',
         confirmed: false,
         gcs_path: uploadedPath || gcsPath,
-        // Don't store content_base64 inline - it goes in a separate doc
       });
     }
 
     if (!saved.length) return errJson('Nessun file valido ricevuto (content_base64 mancante)', 400);
 
-    // Classify with LLM (metadata only, no file bytes)
+    // Classify with LLM (metadata only)
     step = 'classify';
     const classified = await classifyDocumentsWithLLM({ garaId, documents: saved });
 
     // Save document metadata to Firestore (small, no base64)
     step = 'save-documents';
     await documentsDoc(session.tenantId, garaId).set({ documents: classified });
-
-    // Save file contents separately (one Firestore doc per file, avoids 1MB limit)
-    step = 'save-file-contents';
-    for (const fc of fileContents) {
-      await fileContentDoc(session.tenantId, garaId, fc.storedAs).set({
-        content_base64: fc.base64,
-        created_at: new Date().toISOString(),
-      });
-    }
 
     // Update output
     step = 'update-output';
