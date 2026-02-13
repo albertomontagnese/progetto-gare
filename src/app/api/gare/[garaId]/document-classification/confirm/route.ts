@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { garaDoc, conversationDoc, documentsDoc } from '@/lib/firestore';
+import { garaDoc, conversationDoc, documentsDoc, fileContentDoc } from '@/lib/firestore';
 import { tryDownloadFile } from '@/lib/gcs';
 import { requireSession } from '@/lib/session';
 import {
@@ -38,11 +38,22 @@ export async function POST(
     await documentsDoc(session.tenantId, garaId).set({ documents: confirmedDocs });
 
     // Load raw files for LLM analysis
-    // Priority: 1) content_base64 stored in Firestore, 2) download from GCS
+    // Priority: 1) separate file_contents collection, 2) inline content_base64, 3) GCS download
     step = 'load-raw-files';
     const rawFiles: Array<{ name: string; type: string; size: number; content_base64: string }> = [];
     for (const doc of confirmedDocs.slice(0, 6)) {
-      // First try content_base64 saved during upload
+      // Try file_contents subcollection first (stored separately during upload)
+      const fcSnap = await fileContentDoc(session.tenantId, garaId, doc.stored_as).get();
+      if (fcSnap.exists && fcSnap.data()?.content_base64) {
+        rawFiles.push({
+          name: doc.name,
+          type: doc.type || 'application/octet-stream',
+          size: doc.size,
+          content_base64: fcSnap.data()!.content_base64,
+        });
+        continue;
+      }
+      // Try inline content_base64 (legacy)
       if (doc.content_base64) {
         rawFiles.push({
           name: doc.name,
@@ -83,13 +94,13 @@ export async function POST(
     const finalOutput = mergeDocumentsIntoOutput(llmResult.output_json, confirmedDocs, 'confermato');
     await garaDoc(session.tenantId, garaId).set(finalOutput);
 
-    // After extraction, clear the base64 content to save Firestore space
-    step = 'cleanup-base64';
-    const cleanedDocs = confirmedDocs.map((d) => {
-      const { content_base64, ...rest } = d;
-      return rest;
-    });
-    await documentsDoc(session.tenantId, garaId).set({ documents: cleanedDocs });
+    // After extraction, clean up file contents to save Firestore space
+    step = 'cleanup-file-contents';
+    for (const doc of confirmedDocs) {
+      try {
+        await fileContentDoc(session.tenantId, garaId, doc.stored_as).delete();
+      } catch { /* ignore cleanup errors */ }
+    }
 
     step = 'update-conversation';
     const convoSnap = await conversationDoc(session.tenantId, garaId).get();

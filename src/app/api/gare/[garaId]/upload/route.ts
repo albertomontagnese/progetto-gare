@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { garaDoc, conversationDoc, documentsDoc } from '@/lib/firestore';
+import { garaDoc, conversationDoc, documentsDoc, fileContentDoc } from '@/lib/firestore';
 import { tryUploadFile } from '@/lib/gcs';
 import { requireSession } from '@/lib/session';
 import {
@@ -30,9 +30,10 @@ export async function POST(
     const files = Array.isArray(body?.files) ? body.files : [];
     if (!files.length) return errJson('Nessun file ricevuto', 400);
 
-    // Save files - try GCS first, fall back to metadata-only
-    step = 'upload-files';
+    step = 'process-files';
     const saved: GaraDocument[] = [];
+    const fileContents: Array<{ storedAs: string; base64: string }> = [];
+
     for (const file of files) {
       const originalName = sanitizeFileName(file?.name || 'documento');
       const encoded = String(file?.content_base64 || '');
@@ -41,7 +42,7 @@ export async function POST(
       const targetName = `${Date.now()}_${originalName}`;
       const gcsPath = `gare/${garaId}/documents/${targetName}`;
 
-      // Try GCS upload (non-blocking - works without bucket)
+      // Try GCS upload (non-blocking)
       const uploadedPath = await tryUploadFile(buffer, gcsPath, file?.type);
 
       let textPreview = '';
@@ -51,10 +52,10 @@ export async function POST(
         textPreview = buffer.toString('utf8').slice(0, 4000);
       }
 
-      // Store base64 in Firestore for AI extraction (up to ~5MB per doc)
-      // This ensures runInitialOutputFromDocuments can send files to OpenAI
-      // even if GCS is unavailable
-      const storeBase64 = buffer.length < 5_000_000 ? encoded : '';
+      // Keep base64 for separate storage (for AI extraction during confirm)
+      if (buffer.length < 5_000_000) {
+        fileContents.push({ storedAs: targetName, base64: encoded });
+      }
 
       saved.push({
         name: originalName,
@@ -67,28 +68,28 @@ export async function POST(
         rationale: '',
         confirmed: false,
         gcs_path: uploadedPath || gcsPath,
-        content_base64: storeBase64,
+        // Don't store content_base64 inline - it goes in a separate doc
       });
     }
 
     if (!saved.length) return errJson('Nessun file valido ricevuto (content_base64 mancante)', 400);
 
-    // Classify with LLM - strip content_base64 to avoid sending megabytes of base64 as text
-    // Classification only needs name, type, size, preview - not the actual file bytes
+    // Classify with LLM (metadata only, no file bytes)
     step = 'classify';
-    const docsForClassification = saved.map(({ content_base64, ...rest }) => rest);
-    const classified = await classifyDocumentsWithLLM({ garaId, documents: docsForClassification as GaraDocument[] });
+    const classified = await classifyDocumentsWithLLM({ garaId, documents: saved });
 
-    // Re-attach content_base64 from saved docs (classification stripped it)
-    step = 'reattach-content';
-    const savedByName = new Map(saved.map((d) => [d.stored_as, d.content_base64]));
-    const classifiedWithContent = classified.map((doc) => ({
-      ...doc,
-      content_base64: savedByName.get(doc.stored_as) || '',
-    }));
-
+    // Save document metadata to Firestore (small, no base64)
     step = 'save-documents';
-    await documentsDoc(session.tenantId, garaId).set({ documents: classifiedWithContent });
+    await documentsDoc(session.tenantId, garaId).set({ documents: classified });
+
+    // Save file contents separately (one Firestore doc per file, avoids 1MB limit)
+    step = 'save-file-contents';
+    for (const fc of fileContents) {
+      await fileContentDoc(session.tenantId, garaId, fc.storedAs).set({
+        content_base64: fc.base64,
+        created_at: new Date().toISOString(),
+      });
+    }
 
     // Update output
     step = 'update-output';

@@ -74,6 +74,11 @@ export function companyProfileDoc(tenantId: string) {
   return tenantDoc(tenantId).collection('workspace').doc('company_profile');
 }
 
+/** Separate collection for large file contents (avoids 1MB Firestore doc limit) */
+export function fileContentDoc(tenantId: string, garaId: string, storedAs: string) {
+  return tenantDoc(tenantId).collection('gare').doc(garaId).collection('file_contents').doc(storedAs);
+}
+
 /* ───────── Auth collections (global) ───────── */
 
 export function usersCollection() {
