@@ -8,6 +8,7 @@ import { ChatPanel } from '@/components/app/chat-panel';
 import { SidebarRight } from '@/components/app/sidebar-right';
 import { UploadDialog } from '@/components/app/upload-dialog';
 import { CompanyProfilePanel } from '@/components/app/company-profile-panel';
+import { DocumentsPanel } from '@/components/app/documents-panel';
 import type { GaraSummary, GaraOutput, ChatMessage, CompanyProfile, GaraDocument } from '@/lib/types';
 import type { SessionPayload } from '@/lib/session';
 import type { Tenant } from '@/lib/auth-db';
@@ -57,6 +58,9 @@ export default function HomePage() {
   // Keep file payloads in memory between upload and confirm (avoids Firestore size limits)
   const [uploadedFilePayloads, setUploadedFilePayloads] = useState<Array<{ name: string; type: string; size: number; content_base64: string }>>([]);
   const [matching, setMatching] = useState(false);
+  const [showDocs, setShowDocs] = useState(false);
+  const [garaDocs, setGaraDocs] = useState<GaraDocument[]>([]);
+  const [companyDocs, setCompanyDocs] = useState<Array<{ name: string; stored_as: string; category: string; key_facts: string[]; size: number }>>([]);
 
   // Load session
   useEffect(() => {
@@ -86,17 +90,28 @@ export default function HomePage() {
 
   const loadGaraData = useCallback(async (garaId: string) => {
     try {
-      const [outputData, convoData] = await Promise.all([
+      const [outputData, convoData, docsData] = await Promise.all([
         api<{ output: GaraOutput }>(`/api/gare/${encodeURIComponent(garaId)}`),
         api<{ conversation: ChatMessage[] }>(`/api/gare/${encodeURIComponent(garaId)}/conversation`),
+        api<{ documents: GaraDocument[] }>(`/api/gare/${encodeURIComponent(garaId)}/document-classification`).catch(() => ({ documents: [] })),
       ]);
       setOutput(outputData.output);
       setConversation(convoData.conversation);
+      setGaraDocs(docsData.documents || []);
     } catch (err) {
       if ((err as Error).message === 'UNAUTHORIZED') { router.push('/login'); return; }
       toast.error('Errore caricamento gara');
     }
   }, [router]);
+
+  const loadCompanyDocs = useCallback(async () => {
+    try {
+      const data = await api<{ documents: Array<{ name: string; stored_as: string; category: string; key_facts: string[]; size: number }> }>('/api/workspace/azienda/documents');
+      setCompanyDocs(data.documents || []);
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { if (!sessionLoading && session) loadCompanyDocs(); }, [sessionLoading, session, loadCompanyDocs]);
 
   const handleSelectGara = useCallback((garaId: string) => {
     setActiveGaraId(garaId); setActiveView('chat'); loadGaraData(garaId);
@@ -142,7 +157,8 @@ export default function HomePage() {
         { method: 'POST', body: JSON.stringify({ files: filePayloads }) }
       );
       setClassifiedDocs(data.files); setUploadPhase('classify');
-      setUploadedFilePayloads(filePayloads); // keep in memory for confirm step
+      setUploadedFilePayloads(filePayloads);
+      setGaraDocs(data.files); // update docs panel
       setOutput(data.output_json); setConversation(data.conversation);
       toast.success(`${files.length} documenti caricati`);
     } catch (err) { toast.error('Errore upload: ' + (err as Error).message); }
@@ -162,6 +178,20 @@ export default function HomePage() {
       toast.success('Estrazione completata');
     } catch (err) { toast.error('Errore: ' + (err as Error).message); setUploadPhase('classify'); }
   }, [activeGaraId, loadGare, uploadedFilePayloads]);
+
+  const handleUploadCompanyDocs = useCallback(async (files: File[]) => {
+    if (!files.length) return;
+    setUploading(true);
+    try {
+      const payloads = await Promise.all(files.map(async (f) => ({
+        name: f.name, type: f.type, size: f.size, content_base64: await fileToBase64(f),
+      })));
+      await api('/api/workspace/azienda/documents', { method: 'POST', body: JSON.stringify({ files: payloads }) });
+      toast.success(`${files.length} documenti aziendali caricati`);
+      loadCompanyDocs();
+    } catch (err) { toast.error('Errore: ' + (err as Error).message); }
+    finally { setUploading(false); }
+  }, [loadCompanyDocs]);
 
   const handleChecklistProgress = useCallback(async (itemIndex: number, progress: 'todo' | 'wip' | 'done') => {
     if (!activeGaraId) return;
@@ -353,14 +383,38 @@ export default function HomePage() {
         />
       </div>
 
-      {/* Center */}
-      <div className="flex-1 min-w-0 h-full overflow-hidden">
+      {/* Center: Chat + optional Documents panel */}
+      <div className="flex-1 min-w-0 h-full overflow-hidden flex">
         {activeView === 'company' ? (
-          <CompanyProfilePanel profile={companyProfile} onSave={handleSaveCompanyProfile} onUploadCv={handleUploadCv} saving={saving} />
+          <div className="flex-1 min-w-0 h-full overflow-hidden">
+            <CompanyProfilePanel profile={companyProfile} onSave={handleSaveCompanyProfile} onUploadCv={handleUploadCv} saving={saving} />
+          </div>
         ) : (
-          <ChatPanel garaId={activeGaraId} conversation={conversation} loading={chatLoading}
-            onSendMessage={handleSendMessage} onUpload={() => { if (!activeGaraId) { toast.error('Crea prima una gara'); return; } setUploadPhase('upload'); setClassifiedDocs([]); setUploadOpen(true); }}
-            onStartGuidedQA={handleStartGuidedQA} session={session} />
+          <>
+            {/* Chat */}
+            <div className="flex-1 min-w-0 h-full overflow-hidden">
+              <ChatPanel garaId={activeGaraId} conversation={conversation} loading={chatLoading}
+                onSendMessage={handleSendMessage}
+                onToggleDocs={() => setShowDocs((p) => !p)}
+                onStartGuidedQA={handleStartGuidedQA} session={session}
+                garaDocs={garaDocs} companyDocs={companyDocs} />
+            </div>
+            {/* Documents side panel */}
+            {showDocs && activeGaraId && (
+              <div className="w-[320px] shrink-0 h-full overflow-hidden border-l border-slate-200">
+                <DocumentsPanel
+                  garaId={activeGaraId}
+                  garaDocs={garaDocs}
+                  companyDocs={companyDocs}
+                  onUploadGaraDocs={(files) => { handleUpload(files); }}
+                  onUploadCompanyDocs={handleUploadCompanyDocs}
+                  uploading={uploading}
+                  onConfirmClassification={(docs) => handleConfirmClassification(docs)}
+                  classificationPending={uploadPhase === 'confirming'}
+                />
+              </div>
+            )}
+          </>
         )}
       </div>
 
