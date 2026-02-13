@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText, Clock, Shield, CheckCircle2, Users, AlertTriangle,
   ChevronDown, CircleDot, Sparkles, Upload, Paperclip, MessageSquare,
-  TrendingUp, Eye, AlertCircle, UserPlus,
+  TrendingUp, Eye, AlertCircle, UserPlus, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { GaraOutput, ChecklistItem } from '@/lib/types';
@@ -23,6 +23,8 @@ interface SidebarRightProps {
   onEditRequisito?: (itemIndex: number, updates: Partial<ChecklistItem>) => void;
   onDeleteRequisito?: (itemIndex: number) => void;
   onAddRequisito?: (requisito: string) => void;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
 }
 
 /* ────────── Helpers ────────── */
@@ -330,7 +332,7 @@ function DocClassificationBadge({ output }: { output: GaraOutput }) {
 
 /* ────────── Main Component ────────── */
 
-export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, onAttachFile, onManualAnswer, onRunMatch, matching, onEditRequisito, onDeleteRequisito, onAddRequisito }: SidebarRightProps) {
+export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, onAttachFile, onManualAnswer, onRunMatch, matching, onEditRequisito, onDeleteRequisito, onAddRequisito, expanded, onToggleExpand }: SidebarRightProps) {
   const [newReqText, setNewReqText] = useState('');
   if (!garaId || !output) {
     return (
@@ -370,7 +372,14 @@ export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, 
       {/* Progress Header */}
       <div className="p-4 border-b border-slate-200/80 bg-white/90 backdrop-blur-sm shrink-0">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-[15px] text-slate-900">Dashboard Gara</h3>
+          <div className="flex items-center gap-2">
+            {onToggleExpand && (
+              <button onClick={onToggleExpand} className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors" title={expanded ? 'Riduci' : 'Espandi'}>
+                {expanded ? <PanelLeftOpen className="w-4 h-4 text-slate-500" /> : <PanelLeftClose className="w-4 h-4 text-slate-500" />}
+              </button>
+            )}
+            <h3 className="font-bold text-[15px] text-slate-900">Dashboard Gara</h3>
+          </div>
           <Badge variant="outline" className="text-[10px] rounded-full px-2.5 border-slate-200 text-slate-500 font-medium">
             {output.overview_gara?.stato || 'iniziale'}
           </Badge>

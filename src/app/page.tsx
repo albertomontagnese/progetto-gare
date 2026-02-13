@@ -59,6 +59,7 @@ export default function HomePage() {
   const [uploadedFilePayloads, setUploadedFilePayloads] = useState<Array<{ name: string; type: string; size: number; content_base64: string }>>([]);
   const [matching, setMatching] = useState(false);
   const [showDocs, setShowDocs] = useState(false);
+  const [sidebarExpanded, setSidebarExpanded] = useState(false);
   const [garaDocs, setGaraDocs] = useState<GaraDocument[]>([]);
   const [companyDocs, setCompanyDocs] = useState<Array<{ name: string; stored_as: string; category: string; key_facts: string[]; size: number }>>([]);
 
@@ -418,13 +419,14 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Right Sidebar */}
-      <div className="w-[480px] shrink-0 border-l border-slate-200 h-full overflow-hidden">
+      {/* Right Sidebar - expandable */}
+      <div className={`${sidebarExpanded ? 'w-[700px]' : 'w-[480px]'} shrink-0 border-l border-slate-200 h-full overflow-hidden transition-all duration-300`}>
         <SidebarRight garaId={activeGaraId} output={output}
           onChecklistProgress={handleChecklistProgress} onAutofill={handleAutofill}
           onAttachFile={handleAttachFile} onManualAnswer={handleManualAnswer}
           onRunMatch={handleRunMatch} matching={matching}
-          onEditRequisito={handleEditRequisito} onDeleteRequisito={handleDeleteRequisito} onAddRequisito={handleAddRequisito} />
+          onEditRequisito={handleEditRequisito} onDeleteRequisito={handleDeleteRequisito} onAddRequisito={handleAddRequisito}
+          expanded={sidebarExpanded} onToggleExpand={() => setSidebarExpanded((p) => !p)} />
       </div>
 
       {activeGaraId && (

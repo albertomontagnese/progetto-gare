@@ -152,6 +152,8 @@ function collectKnownRequirementsFromOutput(outputJson: GaraOutput) {
 
 export function sanitizeChecklistItems(items: ChecklistItem[], outputJson: GaraOutput): ChecklistItem[] {
   const raw = Array.isArray(items) ? items.map(normalizeChecklistItem) : [];
+
+  // Also collect known requirements from ammissione/valutativi to merge in
   const knownRequirements = collectKnownRequirementsFromOutput(outputJson);
   const knownMap = new Map<string, { requisito: string; fonte: string; tipo: string }>();
   for (const row of knownRequirements) {
@@ -160,17 +162,18 @@ export function sanitizeChecklistItems(items: ChecklistItem[], outputJson: GaraO
     knownMap.set(key, row);
   }
 
-  const bannedPatterns = [/messaggio utente/i, /bozza/i, /todo/i, /task/i, /^verifica contenuti documento/i];
+  const bannedPatterns = [/messaggio utente/i, /^verifica contenuti documento/i, /^verifica requisiti principali/i];
   const out: ChecklistItem[] = [];
   const seen = new Set<string>();
 
+  // Accept ALL items from the LLM (don't filter against knownMap - the LLM may find
+  // requisiti from the bando text that aren't yet in ammissione/valutativi sections)
   for (const item of raw) {
     const req = String(item.requisito || '').trim();
-    if (!req) continue;
+    if (!req || req.length < 5) continue;
     if (bannedPatterns.some((p) => p.test(req))) continue;
     const key = canonicalRequirementKey(req);
     if (!key || seen.has(key)) continue;
-    if (knownMap.size > 0 && !knownMap.has(key)) continue;
     const known = knownMap.get(key);
     out.push(normalizeChecklistItem({
       ...item,
@@ -182,6 +185,7 @@ export function sanitizeChecklistItems(items: ChecklistItem[], outputJson: GaraO
     seen.add(key);
   }
 
+  // Add any known requirements from ammissione/valutativi not already included
   for (const [key, req] of knownMap.entries()) {
     if (seen.has(key)) continue;
     out.push(normalizeChecklistItem({
@@ -434,21 +438,48 @@ export async function buildChecklistWithLLM(p: {
   const { garaId, outputJson, documents, conversation } = p;
   if (!process.env.OPENAI_API_KEY) return fallbackChecklistFromOutput(outputJson, documents);
   const prompt = [
-    'Genera checklist operativa gara in JSON.',
+    'Analizza il JSON della gara e genera una LISTA DETTAGLIATA di TUTTI i requisiti.',
     'Formato uscita OBBLIGATORIO: {"items":[...]}',
-    'Obiettivo: includere TUTTI e SOLI i requisiti di gara (niente task operativi generici).',
-    'Ogni item deve avere esattamente questi campi:',
-    '- requisito',
-    '- fonte (documento + pagina/paragrafo, se disponibile)',
-    '- tipo (obbligatorio|valutativo|allegato|formato)',
-    '- owner_proposta',
-    '- stato (fatto_automaticamente|non_coperto|coperto_da_approvare|approvato)',
-    '- evidenza_proposta',
-    'Regole:',
-    '- Non inventare requisiti non presenti nei documenti o nel JSON.',
-    '- Non omettere requisiti presenti in requisiti_ammissione e requisiti_valutativi.',
-    '- Escludi voci generiche (es. "verifica documento", "task interno").',
-    'Usa frasi sintetiche e operative. Non inserire testo fuori dal JSON.',
+    '',
+    'OBIETTIVO: estrarre OGNI singolo requisito dal bando/disciplinare/capitolato.',
+    'Devi trovare e listare ALMENO 10-30 requisiti specifici, tra cui:',
+    '',
+    'REQUISITI DI AMMISSIONE (obbligatorio):',
+    '- Requisiti economico-finanziari (fatturato minimo, referenze bancarie, ecc.)',
+    '- Requisiti tecnico-professionali (lavori simili, esperienza specifica)',
+    '- Certificazioni richieste (ISO, SOA, abilitazioni)',
+    '- Soglie minime di capacita',
+    '',
+    'REQUISITI DOCUMENTALI (allegato):',
+    '- Documenti da allegare (DGUE, cauzione, polizza, ecc.)',
+    '- Dichiarazioni obbligatorie',
+    '- Moduli da compilare',
+    '',
+    'REQUISITI VALUTATIVI (valutativo):',
+    '- Criteri di valutazione tecnica e relativi punteggi',
+    '- Sottocriteri specifici',
+    '- Soglie di sbarramento',
+    '',
+    'REQUISITI DI FORMATO (formato):',
+    '- Limiti pagine, formati file richiesti',
+    '- Struttura offerta tecnica richiesta',
+    '- Scadenze e tempistiche',
+    '',
+    'Ogni item deve avere:',
+    '- requisito: descrizione specifica e dettagliata (NON generica)',
+    '- fonte: documento + articolo/pagina se disponibile',
+    '- tipo: obbligatorio | valutativo | allegato | formato',
+    '- owner_proposta: ufficio_gare | direzione_tecnica | amministrazione | legale',
+    '- stato: non_coperto (default)',
+    '- evidenza_proposta: vuoto (verra compilato dopo)',
+    '',
+    'REGOLE IMPORTANTI:',
+    '- Sii GRANULARE: "Fatturato medio triennale >= €500.000" e NON "Verifica requisiti"',
+    '- Ogni requisito deve essere un singolo punto verificabile',
+    '- NON raggruppare piu requisiti in uno',
+    '- NON inventare requisiti non presenti nei documenti',
+    '- NON usare frasi generiche come "verifica documento" o "task interno"',
+    'Rispondi SOLO con JSON valido.',
   ].join('\n');
   const payload = await callOpenAI({
     model: getModel(), temperature: 0.1,
@@ -582,7 +613,22 @@ export async function runInitialOutputFromDocuments(p: {
   }
 
   const contract = buildDashboardJsonContract(garaId);
-  const prompt = ['Sei un assistente gare.', 'Estrai le informazioni dai documenti e genera il primo JSON strutturato completo.', contract, 'Rispondi SOLO con JSON valido: {"assistant_reply":"...", "output_json": { ... }}'].join('\n');
+  const prompt = [
+    'Sei un assistente esperto di gare d\'appalto italiane.',
+    'Hai ricevuto documenti di una nuova gara. ANALIZZALI IN PROFONDITA.',
+    '',
+    'COMPITO PRINCIPALE: estrai TUTTI i requisiti specifici dal bando/disciplinare.',
+    'Popola in particolare:',
+    '- requisiti_ammissione: OGNI singolo requisito economico, tecnico, certificazione, soglia',
+    '- requisiti_valutativi: OGNI criterio/sottocriterio con punteggio',
+    '- checklist_operativa.items: LISTA COMPLETA di 15-40 requisiti granulari',
+    '- anagrafica_gara: CIG, CUP, stazione appaltante, base asta, procedura',
+    '- timeline: tutte le scadenze',
+    '',
+    contract,
+    '',
+    'Rispondi SOLO con JSON valido: {"assistant_reply":"...", "output_json": { ... }}',
+  ].join('\n');
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const content: any[] = [{ type: 'input_text', text: `Gara ID: ${garaId}\n\nJSON attuale:\n${JSON.stringify(currentOutput || {}, null, 2)}\n\nDocumenti:\n${JSON.stringify(safeDocs, null, 2)}\n\nAnalizza i file allegati.` }];
