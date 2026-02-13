@@ -68,7 +68,7 @@ function sectionLabel(name: string): string {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function renderValue(value: any, depth = 0): React.ReactNode {
   if (value === null || value === undefined || value === '') return <span className="text-slate-400 text-xs italic">--</span>;
-  if (typeof value === 'string') return <span className="text-[13px] text-slate-700 leading-relaxed">{value}</span>;
+  if (typeof value === 'string') return <span className="text-[13px] text-slate-700 leading-relaxed break-words">{value}</span>;
   if (typeof value === 'number' || typeof value === 'boolean') return <code className="text-[12px] font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">{String(value)}</code>;
   if (Array.isArray(value)) {
     if (value.length === 0) return <span className="text-slate-400 text-xs italic">Nessun elemento</span>;
@@ -105,25 +105,26 @@ function CollapsibleSection({ name, children, defaultOpen = false, count }: {
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
+    <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm overflow-hidden">
       <button onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50/80 transition-colors text-left">
+        className="w-full flex items-center gap-2.5 px-3.5 py-2.5 hover:bg-slate-50/80 transition-colors text-left min-w-0">
         <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500 shrink-0">
           <SectionIcon name={name} />
         </div>
-        <span className="text-[13px] font-semibold text-slate-800 flex-1">{sectionLabel(name)}</span>
+        <span className="text-[13px] font-semibold text-slate-800 flex-1 truncate">{sectionLabel(name)}</span>
         {count !== undefined && count > 0 && (
-          <span className="text-[10px] font-medium text-slate-400 bg-slate-100 rounded-full px-2 py-0.5">{count}</span>
+          <span className="text-[10px] font-medium text-slate-400 bg-slate-100 rounded-full px-2 py-0.5 shrink-0">{count}</span>
         )}
-        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
+        <motion.div animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
           <ChevronDown className="w-4 h-4 text-slate-400" />
         </motion.div>
       </button>
       <AnimatePresence initial={false}>
         {open && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}>
-            <div className="px-3.5 pb-3.5 pt-0">{children}</div>
+            exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: 'easeInOut' }}
+            className="overflow-hidden">
+            <div className="px-3.5 pb-3.5 pt-0 overflow-hidden">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -156,7 +157,7 @@ function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onMa
 
   return (
     <motion.div layout initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.15 }}
-      className={`rounded-xl border border-l-[3px] ${s.accent} ${s.border} bg-gradient-to-r ${s.bg} p-3 transition-all hover:shadow-sm`}>
+      className={`rounded-xl border border-l-[3px] ${s.accent} ${s.border} bg-gradient-to-r ${s.bg} p-3 transition-all hover:shadow-sm overflow-hidden`}>
 
       {/* Title + Badge */}
       <div className="flex items-start justify-between gap-2">
@@ -169,7 +170,7 @@ function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onMa
               className="text-[10px] text-blue-600 bg-blue-50 border border-blue-200 rounded-lg px-2 py-1 hover:bg-blue-100">OK</button>
           </div>
         ) : (
-          <p className="text-[12px] font-semibold text-slate-800 leading-snug flex-1 cursor-pointer hover:text-blue-700"
+          <p className="text-[12px] font-semibold text-slate-800 leading-snug flex-1 cursor-pointer hover:text-blue-700 break-words overflow-hidden"
             onClick={() => setEditing(true)} title="Clicca per modificare">{item.requisito || 'Requisito'}</p>
         )}
         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${s.badge}`}>{s.badgeLabel}</span>
@@ -184,9 +185,9 @@ function RequisitoCard({ item, index, onProgress, onAutofill, onAttachFile, onMa
 
       {/* Evidenza */}
       {item.evidenza_proposta && (
-        <div className="mt-2 bg-white/70 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-slate-100">
+        <div className="mt-2 bg-white/70 backdrop-blur-sm rounded-lg px-2.5 py-1.5 border border-slate-100 overflow-hidden">
           <div className="text-[10px] font-semibold text-slate-500 mb-0.5">Evidenza proposta:</div>
-          <p className="text-[11px] text-slate-600 leading-relaxed">{item.evidenza_proposta}</p>
+          <p className="text-[11px] text-slate-600 leading-relaxed break-words line-clamp-4">{item.evidenza_proposta}</p>
         </div>
       )}
 
@@ -365,7 +366,7 @@ export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, 
   const hasReqVal = reqVal && Object.values(reqVal).some((v) => Array.isArray(v) && v.length > 0);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-slate-50/80 to-white">
+    <div className="flex flex-col h-full overflow-hidden bg-gradient-to-b from-slate-50/80 to-white min-w-0">
       {/* Progress Header */}
       <div className="p-4 border-b border-slate-200/80 bg-white/90 backdrop-blur-sm shrink-0">
         <div className="flex items-center justify-between mb-3">
@@ -416,8 +417,8 @@ export function SidebarRight({ garaId, output, onChecklistProgress, onAutofill, 
       )}
 
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="p-3 space-y-2">
+      <div className="flex-1 overflow-y-auto min-h-0 min-w-0">
+        <div className="p-3 space-y-2 overflow-hidden">
 
           {/* Doc Classification Badge */}
           <DocClassificationBadge output={output} />

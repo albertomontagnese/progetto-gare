@@ -102,6 +102,12 @@
   background: oklch(0.72 0.02 240);
 }
 
+/* Force word wrapping in sidebar */
+[class*="sidebar"] * {
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
 /* Glassmorphism utility */
 .glass {
   background: rgba(255, 255, 255, 0.7);

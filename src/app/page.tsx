@@ -335,9 +335,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="h-screen flex overflow-hidden bg-slate-50">
+    <div className="h-screen w-screen flex overflow-hidden bg-slate-50">
       {/* Left Sidebar */}
-      <div className="w-[264px] shrink-0">
+      <div className="w-[264px] shrink-0 h-full overflow-hidden">
         <SidebarLeft
           gare={gare}
           activeGaraId={activeGaraId}
@@ -354,7 +354,7 @@ export default function HomePage() {
       </div>
 
       {/* Center */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 h-full overflow-hidden">
         {activeView === 'company' ? (
           <CompanyProfilePanel profile={companyProfile} onSave={handleSaveCompanyProfile} onUploadCv={handleUploadCv} saving={saving} />
         ) : (
