@@ -39,7 +39,7 @@ export async function POST(
       if (!encoded) continue;
       const buffer = Buffer.from(encoded, 'base64');
       const targetName = `${Date.now()}_${originalName}`;
-      const gcsPath = `gare/${garaId}/documents/${targetName}`;
+      const gcsPath = `${session.tenantId}/gare/${garaId}/documents/${targetName}`;
 
       // Try GCS upload (non-blocking)
       const uploadedPath = await tryUploadFile(buffer, gcsPath, file?.type);

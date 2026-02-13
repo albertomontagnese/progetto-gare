@@ -35,7 +35,7 @@ export async function POST(
       if (!encoded) continue;
       const buffer = Buffer.from(encoded, 'base64');
       const targetName = `${Date.now()}_r${itemIndex}_${originalName}`;
-      const gcsPath = `gare/${garaId}/allegati/${targetName}`;
+      const gcsPath = `${session.tenantId}/gare/${garaId}/allegati/${targetName}`;
       await tryUploadFile(buffer, gcsPath, file?.type);
       savedNames.push(targetName);
     }

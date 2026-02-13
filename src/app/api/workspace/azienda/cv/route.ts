@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       if (!encoded) continue;
       const buffer = Buffer.from(encoded, 'base64');
       const targetName = `${Date.now()}_${originalName}`;
-      const gcsPath = `workspace/cv/${targetName}`;
+      const gcsPath = `${session.tenantId}/workspace/cv/${targetName}`;
       await uploadFile(buffer, gcsPath, file?.type);
       saved.push(targetName);
     }
