@@ -26,6 +26,8 @@ export interface GaraDocument {
   rationale: string;
   confirmed: boolean;
   gcs_path?: string;
+  /** Base64-encoded file content, stored in Firestore for AI extraction when GCS is unavailable */
+  content_base64?: string;
 }
 
 export interface ChatMessage {

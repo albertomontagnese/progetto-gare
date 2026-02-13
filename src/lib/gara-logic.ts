@@ -434,9 +434,21 @@ export async function buildChecklistWithLLM(p: {
   const { garaId, outputJson, documents, conversation } = p;
   if (!process.env.OPENAI_API_KEY) return fallbackChecklistFromOutput(outputJson, documents);
   const prompt = [
-    'Genera checklist operativa gara in JSON. Formato uscita OBBLIGATORIO: {"items":[...]}',
-    'Ogni item: requisito, fonte, tipo (obbligatorio|valutativo|allegato|formato), owner_proposta, stato, evidenza_proposta',
-    'Includi TUTTI e SOLI i requisiti di gara. Non inventare requisiti non presenti nei documenti o nel JSON.',
+    'Genera checklist operativa gara in JSON.',
+    'Formato uscita OBBLIGATORIO: {"items":[...]}',
+    'Obiettivo: includere TUTTI e SOLI i requisiti di gara (niente task operativi generici).',
+    'Ogni item deve avere esattamente questi campi:',
+    '- requisito',
+    '- fonte (documento + pagina/paragrafo, se disponibile)',
+    '- tipo (obbligatorio|valutativo|allegato|formato)',
+    '- owner_proposta',
+    '- stato (fatto_automaticamente|non_coperto|coperto_da_approvare|approvato)',
+    '- evidenza_proposta',
+    'Regole:',
+    '- Non inventare requisiti non presenti nei documenti o nel JSON.',
+    '- Non omettere requisiti presenti in requisiti_ammissione e requisiti_valutativi.',
+    '- Escludi voci generiche (es. "verifica documento", "task interno").',
+    'Usa frasi sintetiche e operative. Non inserire testo fuori dal JSON.',
   ].join('\n');
   const payload = await callOpenAI({
     model: getModel(), temperature: 0.1,
@@ -460,10 +472,16 @@ function buildDashboardJsonContract(garaId: string): string {
     'VINCOLI DI COMPATIBILITA DASHBOARD:',
     '- Rispondi SOLO con JSON valido (nessun markdown, nessun testo extra).',
     '- Mantieni SEMPRE le sezioni baseline dello schema e aggiungi liberamente altre sezioni top-level quando utile.',
-    '- Ogni valore deve rispettare il tipo atteso.',
-    '- Per informazioni descrittive usa ELENCHI PUNTATI: preferisci array di stringhe.',
+    '- Struttura i contenuti in sezioni/sottosezioni con oggetti annidati e array.',
+    '- Ogni valore deve rispettare il tipo atteso: stringa, numero, array o oggetto coerente.',
+    '- Per informazioni descrittive usa ELENCHI PUNTATI: preferisci array di stringhe oppure array di oggetti.',
+    '- Evita paragrafi lunghi in un solo campo stringa.',
+    '- Ogni lista deve contenere voci atomiche e leggibili come bullet points.',
     '- Se un dato non e disponibile, usa stringa vuota oppure array vuoto.',
+    '- Non rimuovere sezioni o campi gia presenti; aggiorna e completa progressivamente.',
     '- Aggiorna overview_gara.ultimo_aggiornamento in ISO-8601.',
+    '- Includi informazioni note attuali e aggiungi nuove sezioni se emergono dai documenti/conversazione.',
+    '- Mantieni e popola checklist_operativa.items con voci granulari di requisito.',
     'SCHEMA BASE MINIMO:',
     JSON.stringify(schema, null, 2),
   ].join('\n');
