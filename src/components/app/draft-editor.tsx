@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileOutput, ChevronDown, GripVertical, Save, Download, Loader2,
@@ -41,84 +41,131 @@ const DEFAULT_SECTIONS: Omit<DraftSection, 'content'>[] = [
   { id: 'allegati', title: 'Elenco Allegati', icon: <FileText className="w-4 h-4" />, source: 'output_finale', locked: false },
 ];
 
-function buildSectionsFromOutput(output: GaraOutput | null): DraftSection[] {
-  if (!output) return DEFAULT_SECTIONS.map((s) => ({ ...s, content: '' }));
-
+/** Build auto-generated content from the structured output data (requisiti, anagrafica, etc.) */
+function buildAutoContentForSource(output: GaraOutput, source: string): string {
   const checklist = output.checklist_operativa?.items || [];
   const coveredItems = checklist.filter((i) => i.evidenza_proposta);
 
-  // Build content from output data + requisiti responses
-  const buildContent = (source: string): string => {
-    switch (source) {
-      case 'anagrafica': {
-        const a = output.anagrafica_gara;
-        if (!a?.stazione_appaltante && !a?.cig) return '';
-        return [
-          a.stazione_appaltante && `Stazione appaltante: ${a.stazione_appaltante}`,
-          a.cig && `CIG: ${a.cig}`,
-          a.cup && `CUP: ${a.cup}`,
-          a.procedura && `Procedura: ${a.procedura}`,
-          a.base_asta && `Base d'asta: ${a.base_asta}`,
-        ].filter(Boolean).join('\n');
-      }
-      case 'referenze': {
-        const items = coveredItems.filter((i) => i.tipo === 'obbligatorio' && (i.fonte?.includes('tecnico') || i.fonte?.includes('referenz') || i.requisito?.toLowerCase().includes('esperienza') || i.requisito?.toLowerCase().includes('lavori')));
-        if (!items.length) return '';
-        return items.map((i) => `${i.requisito}\n${i.evidenza_proposta}`).join('\n\n');
-      }
-      case 'team_cv': {
-        const team = output.team_cv;
-        if (!team?.ruoli_obbligatori?.length && !team?.cv_associati?.length) return '';
-        const lines = (team.cv_associati || []).map((a) => `- ${a.ruolo}: ${a.cv || 'da assegnare'}`);
-        const gaps = (team.gap || []).map((g) => `- ${g}: NON ASSEGNATO`);
-        return [...lines, ...gaps].join('\n');
-      }
-      case 'metodologia': {
-        const items = coveredItems.filter((i) => i.tipo === 'valutativo' || i.requisito?.toLowerCase().includes('metodolog') || i.requisito?.toLowerCase().includes('approccio'));
-        if (!items.length) return '';
-        return items.map((i) => `## ${i.requisito}\n${i.evidenza_proposta}`).join('\n\n');
-      }
-      case 'timeline': {
-        const t = output.timeline;
-        if (!t?.scadenza_offerta && !t?.data_pubblicazione) return '';
-        return [
-          t.data_pubblicazione && `Pubblicazione: ${t.data_pubblicazione}`,
-          t.scadenza_offerta && `Scadenza offerta: ${t.scadenza_offerta}`,
-          t.termine_quesiti && `Termine quesiti: ${t.termine_quesiti}`,
-          t.sopralluogo && `Sopralluogo: ${t.sopralluogo}`,
-        ].filter(Boolean).join('\n');
-      }
-      case 'hse': {
-        const items = coveredItems.filter((i) => i.requisito?.toLowerCase().includes('sicur') || i.requisito?.toLowerCase().includes('ambient') || i.requisito?.toLowerCase().includes('iso') || i.requisito?.toLowerCase().includes('hse'));
-        if (!items.length) return '';
-        return items.map((i) => `## ${i.requisito}\n${i.evidenza_proposta}`).join('\n\n');
-      }
-      case 'rischi_red_flags': {
-        const r = output.rischi_red_flags;
-        if (!r?.elenco?.length) return '';
-        return r.elenco.map((e, i) => `${i + 1}. ${e}${r.azioni_mitigazione?.[i] ? `\n   Mitigazione: ${r.azioni_mitigazione[i]}` : ''}`).join('\n');
-      }
-      case 'economica': {
-        const e = output.economica;
-        if (!e?.formula_punteggio_prezzo && !e?.ribasso_massimo) return '';
-        return [
-          e.formula_punteggio_prezzo && `Formula punteggio prezzo: ${e.formula_punteggio_prezzo}`,
-          e.ribasso_massimo && `Ribasso massimo: ${e.ribasso_massimo}`,
-          e.costi_non_ribassabili && `Costi non ribassabili: ${e.costi_non_ribassabili}`,
-          ...(e.vincoli || []).map((v) => `Vincolo: ${v}`),
-        ].filter(Boolean).join('\n');
-      }
-      case 'output_finale': {
-        const o = output.output_finale;
-        const allegati = [...(o?.allegati_pronti || []), ...(o?.gap_residui || []).map((g) => `[MANCANTE] ${g}`)];
-        return allegati.length ? allegati.map((a, i) => `${i + 1}. ${a}`).join('\n') : '';
-      }
-      default:
-        return '';
+  switch (source) {
+    case 'anagrafica': {
+      const a = output.anagrafica_gara;
+      if (!a?.stazione_appaltante && !a?.cig) return '';
+      return [
+        a.stazione_appaltante && `Stazione appaltante: ${a.stazione_appaltante}`,
+        a.cig && `CIG: ${a.cig}`,
+        a.cup && `CUP: ${a.cup}`,
+        a.procedura && `Procedura: ${a.procedura}`,
+        a.base_asta && `Base d'asta: ${a.base_asta}`,
+      ].filter(Boolean).join('\n');
     }
-  };
+    case 'referenze': {
+      const items = coveredItems.filter((i) => i.tipo === 'obbligatorio' && (i.fonte?.includes('tecnico') || i.fonte?.includes('referenz') || i.requisito?.toLowerCase().includes('esperienza') || i.requisito?.toLowerCase().includes('lavori')));
+      if (!items.length) return '';
+      return items.map((i) => `${i.requisito}\n${i.evidenza_proposta}`).join('\n\n');
+    }
+    case 'team_cv': {
+      const team = output.team_cv;
+      if (!team?.ruoli_obbligatori?.length && !team?.cv_associati?.length) return '';
+      const lines = (team.cv_associati || []).map((a) => `- ${a.ruolo}: ${a.cv || 'da assegnare'}`);
+      const gaps = (team.gap || []).map((g) => `- ${g}: NON ASSEGNATO`);
+      return [...lines, ...gaps].join('\n');
+    }
+    case 'metodologia': {
+      const items = coveredItems.filter((i) => i.tipo === 'valutativo' || i.requisito?.toLowerCase().includes('metodolog') || i.requisito?.toLowerCase().includes('approccio'));
+      if (!items.length) return '';
+      return items.map((i) => `## ${i.requisito}\n${i.evidenza_proposta}`).join('\n\n');
+    }
+    case 'timeline': {
+      const t = output.timeline;
+      if (!t?.scadenza_offerta && !t?.data_pubblicazione) return '';
+      return [
+        t.data_pubblicazione && `Pubblicazione: ${t.data_pubblicazione}`,
+        t.scadenza_offerta && `Scadenza offerta: ${t.scadenza_offerta}`,
+        t.termine_quesiti && `Termine quesiti: ${t.termine_quesiti}`,
+        t.sopralluogo && `Sopralluogo: ${t.sopralluogo}`,
+      ].filter(Boolean).join('\n');
+    }
+    case 'hse': {
+      const items = coveredItems.filter((i) => i.requisito?.toLowerCase().includes('sicur') || i.requisito?.toLowerCase().includes('ambient') || i.requisito?.toLowerCase().includes('iso') || i.requisito?.toLowerCase().includes('hse'));
+      if (!items.length) return '';
+      return items.map((i) => `## ${i.requisito}\n${i.evidenza_proposta}`).join('\n\n');
+    }
+    case 'rischi_red_flags': {
+      const r = output.rischi_red_flags;
+      if (!r?.elenco?.length) return '';
+      return r.elenco.map((e, i) => `${i + 1}. ${e}${r.azioni_mitigazione?.[i] ? `\n   Mitigazione: ${r.azioni_mitigazione[i]}` : ''}`).join('\n');
+    }
+    case 'economica': {
+      const e = output.economica;
+      if (!e?.formula_punteggio_prezzo && !e?.ribasso_massimo) return '';
+      return [
+        e.formula_punteggio_prezzo && `Formula punteggio prezzo: ${e.formula_punteggio_prezzo}`,
+        e.ribasso_massimo && `Ribasso massimo: ${e.ribasso_massimo}`,
+        e.costi_non_ribassabili && `Costi non ribassabili: ${e.costi_non_ribassabili}`,
+        ...(e.vincoli || []).map((v) => `Vincolo: ${v}`),
+      ].filter(Boolean).join('\n');
+    }
+    case 'output_finale': {
+      const o = output.output_finale;
+      const allegati = [...(o?.allegati_pronti || []), ...(o?.gap_residui || []).map((g) => `[MANCANTE] ${g}`)];
+      return allegati.length ? allegati.map((a, i) => `${i + 1}. ${a}`).join('\n') : '';
+    }
+    default:
+      return '';
+  }
+}
 
-  return DEFAULT_SECTIONS.map((s) => ({ ...s, content: buildContent(s.source) }));
+/**
+ * Build sections with this priority:
+ * 1. Saved draft_offerta sections (user-saved content from Firestore)
+ * 2. Auto-generated content from output data (requisiti, anagrafica, etc.)
+ * Also returns auto-generated content separately so we can detect user edits.
+ */
+function buildSectionsFromOutput(output: GaraOutput | null): { sections: DraftSection[]; autoContent: Record<string, string> } {
+  if (!output) {
+    return {
+      sections: DEFAULT_SECTIONS.map((s) => ({ ...s, content: '' })),
+      autoContent: {},
+    };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const savedDraft = (output as any).draft_offerta as { sections?: Array<{ id: string; title: string; content: string }>; updated_at?: string } | undefined;
+  const savedMap = new Map<string, string>();
+  if (savedDraft?.sections) {
+    for (const s of savedDraft.sections) {
+      savedMap.set(s.id, s.content);
+    }
+  }
+
+  const autoContent: Record<string, string> = {};
+
+  const sections = DEFAULT_SECTIONS.map((s) => {
+    const auto = buildAutoContentForSource(output, s.source);
+    autoContent[s.id] = auto;
+    // Use saved content if available, otherwise use auto-generated
+    const content = savedMap.has(s.id) ? (savedMap.get(s.id) || '') : auto;
+    return { ...s, content };
+  });
+
+  // Also re-add any custom sections that were saved
+  if (savedDraft?.sections) {
+    for (const saved of savedDraft.sections) {
+      if (!sections.find((s) => s.id === saved.id)) {
+        sections.push({
+          id: saved.id,
+          title: saved.title,
+          icon: <BookOpen className="w-4 h-4" />,
+          content: saved.content,
+          source: 'custom',
+          locked: false,
+        });
+        autoContent[saved.id] = ''; // custom sections have no auto content
+      }
+    }
+  }
+
+  return { sections, autoContent };
 }
 
 function SectionEditor({ section, onChange, onGenerate, generating }: {
@@ -175,23 +222,56 @@ export function DraftEditor({ garaId, output, onSaveDraft, onGenerateSection, sa
   const [sections, setSections] = useState<DraftSection[]>([]);
   const [customSectionTitle, setCustomSectionTitle] = useState('');
 
+  // Track which sections the user has manually edited in the textarea (dirty tracking).
+  // Only these sections are preserved when output changes.
+  const dirtySectionsRef = useRef<Set<string>>(new Set());
+  // Keep the last auto-generated content so we can detect real user edits vs auto-generated updates
+  const lastAutoContentRef = useRef<Record<string, string>>({});
+
+  // Reset dirty tracking when switching gara
   useEffect(() => {
+    dirtySectionsRef.current = new Set();
+    lastAutoContentRef.current = {};
+    setSections([]);
+  }, [garaId]);
+
+  useEffect(() => {
+    const { sections: fresh, autoContent } = buildSectionsFromOutput(output);
+    lastAutoContentRef.current = autoContent;
+
     setSections((prev) => {
-      // Rebuild from output but preserve user edits
-      const fresh = buildSectionsFromOutput(output);
       if (prev.length === 0) return fresh;
-      // Merge: keep user content if they edited, update from output if empty
-      return fresh.map((f) => {
+
+      // Merge: only preserve content for sections the user actually touched in the textarea
+      const merged = fresh.map((f) => {
         const existing = prev.find((p) => p.id === f.id);
-        if (existing && existing.content && existing.content !== f.content) {
-          return existing; // preserve user edit
+        if (existing && dirtySectionsRef.current.has(f.id)) {
+          // User manually edited this section - keep their version
+          return existing;
         }
         return f;
       });
+
+      // Keep any custom sections that were added in the current session
+      for (const p of prev) {
+        if (p.source === 'custom' && !merged.find((m) => m.id === p.id)) {
+          merged.push(p);
+        }
+      }
+
+      return merged;
     });
   }, [output]);
 
   const updateSection = useCallback((id: string, content: string) => {
+    // Mark section as dirty (user-edited) only if the content differs from auto-generated
+    const autoContent = lastAutoContentRef.current[id] ?? '';
+    if (content !== autoContent) {
+      dirtySectionsRef.current.add(id);
+    } else {
+      // User reverted to auto content - no longer dirty
+      dirtySectionsRef.current.delete(id);
+    }
     setSections((prev) => prev.map((s) => s.id === id ? { ...s, content } : s));
   }, []);
 

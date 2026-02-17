@@ -310,10 +310,14 @@ export default function HomePage() {
       // Save draft sections to the gara output
       const currentSnap = output;
       if (currentSnap) {
+        const draftOfferta = { sections, updated_at: new Date().toISOString() };
+        const updatedOutput = { ...currentSnap, draft_offerta: draftOfferta };
         await api(`/api/gare/${encodeURIComponent(activeGaraId)}`, {
           method: 'POST',
-          body: JSON.stringify({ output_json: { ...currentSnap, draft_offerta: { sections, updated_at: new Date().toISOString() } } }),
+          body: JSON.stringify({ output_json: updatedOutput }),
         });
+        // Update local state so the saved draft persists in memory
+        setOutput(updatedOutput as GaraOutput);
         toast.success('Bozza salvata');
       }
     } catch (err) { toast.error('Errore: ' + (err as Error).message); }

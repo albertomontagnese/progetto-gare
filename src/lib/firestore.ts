@@ -45,6 +45,7 @@ function getApp(): App {
 export function getDb(): Firestore {
   if (db) return db;
   db = getFirestore(getApp());
+  db.settings({ preferRest: true });
   return db;
 }
 
