@@ -31,12 +31,16 @@ function getApp(): App {
     console.error('[Firestore] Private key missing PEM header. Check GOOGLE_PRIVATE_KEY_BASE64 or GOOGLE_PRIVATE_KEY env var.');
   }
 
+  const projectId = (process.env.GOOGLE_CLOUD_PROJECT || '').trim();
+  const clientEmail = (process.env.GOOGLE_CLIENT_EMAIL || '').trim();
+
   app = initializeApp({
     credential: cert({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT,
-      clientEmail: process.env.GOOGLE_CLIENT_EMAIL,
+      projectId,
+      clientEmail,
       privateKey,
     }),
+    projectId,
   });
 
   return app;
