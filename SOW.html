@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Progetto Gare — Statement of Work (SOW)</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.5;
+    color: #333;
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 20px;
+  }
+  h1 { font-size: 20pt; color: #1a1a1a; margin-bottom: 4px; }
+  h2 { font-size: 14pt; color: #1a1a1a; border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 28px; }
+  h3 { font-size: 12pt; color: #333; margin-top: 20px; }
+  h4 { font-size: 11pt; color: #333; margin-top: 16px; }
+  p { margin: 8px 0; }
+  ul { margin: 6px 0 6px 20px; }
+  li { margin: 3px 0; }
+  blockquote {
+    margin: 8px 0;
+    padding: 8px 14px;
+    background: #f7f7f7;
+    border-left: 3px solid #999;
+    font-style: italic;
+  }
+  blockquote strong { font-style: normal; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 10px 0;
+    font-size: 10pt;
+  }
+  th, td {
+    border: 1px solid #bbb;
+    padding: 6px 10px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background-color: #f0f0f0;
+    font-weight: bold;
+  }
+  .summary-row td {
+    font-weight: bold;
+    background-color: #f7f7f7;
+  }
+  .meta {
+    color: #555;
+    font-size: 10pt;
+    margin-bottom: 20px;
+  }
+  .sequence-box {
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    padding: 14px 18px;
+    font-family: monospace;
+    font-size: 10pt;
+    white-space: pre;
+    margin: 10px 0;
+    line-height: 1.8;
+  }
+  hr { border: none; border-top: 1px solid #ccc; margin: 24px 0; }
+  em.footer { font-size: 10pt; color: #666; }
+</style>
+</head>
+<body>
+
+<h1>Progetto Gare — Statement of Work (SOW)</h1>
+<p class="meta">
+  <strong>Date:</strong> February 2026<br>
+  <strong>Client:</strong> TBD<br>
+  <strong>Vendor:</strong> TBD
+</p>
+
+<hr>
+
+<h2>1. Executive Summary</h2>
+
+<p>Progetto Gare is an AI-powered platform for managing Italian public procurement tenders ("gare d'appalto"). It helps companies upload and classify tender documents, automatically extract requirements into an operational checklist, match company evidence against those requirements, and generate draft technical proposals — all powered by AI.</p>
+
+<p><strong>Core capabilities:</strong></p>
+<ul>
+  <li>Document upload with AI classification (10 categories)</li>
+  <li>Automated requirement extraction into an operational checklist</li>
+  <li>Requirement–evidence matching with gap analysis</li>
+  <li>Context-aware AI chat with document references</li>
+  <li>Draft technical proposal editor with per-section AI generation</li>
+  <li>Company workspace (profile, certifications, CVs, reference documents)</li>
+  <li>Authentication, team management, and role-based access</li>
+</ul>
+
+<p><strong>What needs to happen next:</strong> A paid discovery phase to align on the final product direction — especially around the chat interface, requirements dashboard, and output generation — followed by a structured build-out in 4 macro areas.</p>
+
+<hr>
+
+<h2>2. Paid Discovery Phase</h2>
+
+<blockquote>
+  <strong>Objective:</strong> Align on deliverables, UX direction, and acceptance criteria before committing to the full build.<br>
+  <strong>Output:</strong> Product brief, wireframes, validated user flows, and a finalized backlog.
+</blockquote>
+
+<table>
+  <tr><th>Activity</th><th>Description</th><th>Hours</th></tr>
+  <tr><td>Discovery workshop</td><td>Stakeholder interviews combined with chat interface and requirements dashboard design sessions — understand end-user workflows, define what the chat should do vs. structured UI, rethink the dashboard layout and information hierarchy</td><td>8h</td></tr>
+  <tr><td>Wireframes &amp; clickable prototype</td><td>Low-fi wireframes for the main views (chat, requirements dashboard, output)</td><td>6h</td></tr>
+  <tr><td>Product brief &amp; backlog</td><td>Write acceptance criteria, define scope, prioritize features, estimate effort</td><td>4h</td></tr>
+  <tr><td>Alignment presentation</td><td>Final walkthrough with client, sign-off on scope</td><td>2h</td></tr>
+  <tr class="summary-row"><td><strong>Discovery Total</strong></td><td></td><td><strong>20 hours</strong></td></tr>
+</table>
+
+<p><strong>Discovery Output:</strong> Product brief, wireframes, finalized backlog with acceptance criteria</p>
+
+<hr>
+
+<h2>3. Macro Areas Breakdown</h2>
+
+<h3>Area 1 — Chat &amp; AI Interaction Layer</h3>
+<blockquote>Refine how users interact with the AI across the platform.</blockquote>
+
+<p>The current chat is a single conversational panel. The key design question is: <strong>what belongs in the chat vs. what belongs in structured UI?</strong> The chat should not be a catch-all — it should be the "thinking partner" while structured panels handle execution.</p>
+
+<table>
+  <tr><th>Task</th><th>Description</th><th>Hours</th></tr>
+  <tr><td>Context management</td><td>Build proper context windowing — needs smart context selection based on active task and relevant documents</td><td>10h</td></tr>
+  <tr><td>Chat ↔ sidebar integration</td><td>Actions from chat should update the sidebar in real-time (e.g., "mark requirement X as done" from chat)</td><td>8h</td></tr>
+  <tr><td>Prompt engineering &amp; guardrails</td><td>Harden prompts, add output validation, handle hallucinations, structured error recovery</td><td>6h</td></tr>
+  <tr class="summary-row"><td><strong>Area 1 Total</strong></td><td></td><td><strong>24 hours</strong></td></tr>
+</table>
+
+<h3>Area 2 — Requirements Dashboard &amp; Output</h3>
+<blockquote>The operational heart of the product — from requirements tracking to deliverable generation.</blockquote>
+
+<p>This area covers both the requirements dashboard and the output panel (draft proposal). The focus is on getting the UI right for managing requirements and producing a usable output document.</p>
+
+<table>
+  <tr><th>Task</th><th>Description</th><th>Hours</th></tr>
+  <tr><td>Dashboard UX overhaul</td><td>Redesign card layout, introduce filtering/sorting/grouping by type, source, status, owner</td><td>10h</td></tr>
+  <tr><td>Bulk operations</td><td>Multi-select requirements, bulk status update, bulk assignment, bulk AI auto-fill</td><td>4h</td></tr>
+  <tr><td>Output editor &amp; export</td><td>Integrate a lightweight rich text editor for the draft proposal, with AI-assisted per-section generation and PDF/DOCX export</td><td>12h</td></tr>
+  <tr class="summary-row"><td><strong>Area 2 Total</strong></td><td></td><td><strong>26 hours</strong></td></tr>
+</table>
+
+<h3>Area 3 — Document Intelligence</h3>
+<blockquote>From "upload and classify" to a robust document intelligence layer — for both tender documents and company documents.</blockquote>
+
+<table>
+  <tr><th>Task</th><th>Description</th><th>Hours</th></tr>
+  <tr><td>Document viewer</td><td>In-app read-only PDF viewer with source traceability (link requirements back to source pages)</td><td>6h</td></tr>
+  <tr><td>Source linking</td><td>Every extracted requirement links back to the exact page/paragraph in the source document</td><td>8h</td></tr>
+  <tr><td>Bando intelligence</td><td>Advanced extraction from tender documents: structured parsing of requirements, deadlines, thresholds, evaluation criteria, and cross-referencing across document types</td><td>8h</td></tr>
+  <tr><td>Company document intelligence</td><td>AI extraction from company docs: auto-tag capabilities, certifications, project references, CV parsing</td><td>6h</td></tr>
+  <tr><td>LLM model testing &amp; evaluation</td><td>Test and benchmark multiple LLM providers/models for extraction quality, classification accuracy, and cost-efficiency across real tender documents</td><td>4h</td></tr>
+  <tr><td>Batch upload &amp; processing</td><td>Upload multiple files with progress indicators, retry on failure, background processing</td><td>4h</td></tr>
+  <tr class="summary-row"><td><strong>Area 3 Total</strong></td><td></td><td><strong>36 hours</strong></td></tr>
+</table>
+
+<h3>Area 4 — Platform, Admin &amp; Production Readiness</h3>
+<blockquote>Everything needed to deliver a production-ready, maintainable product.</blockquote>
+
+<table>
+  <tr><th>Task</th><th>Description</th><th>Hours</th></tr>
+  <tr><td>Admin panel</td><td>Full admin experience: team management, role assignment, user permissions, company settings, usage overview</td><td>8h</td></tr>
+  <tr><td>Error handling &amp; resilience</td><td>Error boundaries, retry logic, offline indicators, graceful degradation when AI is slow/down</td><td>4h</td></tr>
+  <tr><td>Authentication hardening</td><td>Remove dev shortcuts, add rate limiting, session refresh, account recovery</td><td>4h</td></tr>
+  <tr><td>Testing</td><td>Unit tests for business logic, integration tests for API routes, E2E tests for critical flows</td><td>10h</td></tr>
+  <tr><td>Performance optimization</td><td>Lazy loading, code splitting, API response caching, pagination</td><td>4h</td></tr>
+  <tr><td>Security audit</td><td>Input sanitization, CORS hardening, file upload validation, data isolation verification</td><td>4h</td></tr>
+  <tr><td>CI/CD pipeline</td><td>Automated lint, test, type-check, preview deployments, production deploy</td><td>4h</td></tr>
+  <tr><td>Monitoring &amp; observability</td><td>Error tracking, AI usage/cost tracking, basic analytics</td><td>4h</td></tr>
+  <tr><td>Documentation</td><td>API docs, deployment runbook, onboarding guide</td><td>2h</td></tr>
+  <tr><td>Infrastructure planning &amp; cost modeling</td><td>Define hosting architecture, set up cost monitoring</td><td>4h</td></tr>
+  <tr class="summary-row"><td><strong>Area 4 Total</strong></td><td></td><td><strong>48 hours</strong></td></tr>
+</table>
+
+<hr>
+
+<h2>4. Effort Summary</h2>
+
+<table>
+  <tr><th>Phase</th><th>Hours</th><th>Notes</th></tr>
+  <tr><td><strong>Discovery (paid)</strong></td><td>20h</td><td>Must happen first. Output: product brief + wireframes + backlog</td></tr>
+  <tr><td><strong>Area 1</strong> — Chat &amp; AI Interaction</td><td>24h</td><td>Highest product-risk area</td></tr>
+  <tr><td><strong>Area 2</strong> — Requirements Dashboard &amp; Output</td><td>26h</td><td>Core value prop of the product</td></tr>
+  <tr><td><strong>Area 3</strong> — Document Intelligence</td><td>36h</td><td>Differentiator — bando + company intelligence</td></tr>
+  <tr><td><strong>Area 4</strong> — Platform, Admin &amp; Production</td><td>48h</td><td>Non-negotiable for production</td></tr>
+  <tr class="summary-row"><td><strong>Total</strong></td><td><strong>154 hours</strong></td><td><strong>~5 weeks at 30h/week</strong></td></tr>
+</table>
+
+<blockquote><strong>Note:</strong> These are development hours only. They do not include project management, client communication, or QA cycles, which typically add 15–20% overhead.</blockquote>
+
+<hr>
+
+<h2>5. Risks &amp; Technical Difficulties</h2>
+
+<h3>High Risk</h3>
+
+<table>
+  <tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+  <tr><td><strong>LLM output unpredictability</strong></td><td>LLMs can produce inconsistent structures, hallucinate requirements, or miss critical details. The extraction quality directly determines product value.</td><td>Strict output schemas with validation; fallback/retry logic; human-in-the-loop review on every extraction; confidence scoring per requirement</td></tr>
+  <tr><td><strong>Requirements dashboard complexity</strong></td><td>The dashboard is doing too much in one panel: checklist, evidence, matching, editing, progress, team assignments. Risk of becoming unusable as data grows.</td><td>Discovery phase must nail the information architecture. Consider splitting into multiple views or introducing a detail-drawer pattern</td></tr>
+  <tr><td><strong>Chat vs. structured UI boundary</strong></td><td>Unclear what should happen via chat (natural language) vs. via direct manipulation (clicks, forms). Wrong boundary = confused users or redundant UI.</td><td>Dedicated workshop in discovery. Principle: chat for exploration/thinking, structured UI for execution/tracking</td></tr>
+</table>
+
+<h3>Medium Risk</h3>
+
+<table>
+  <tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr>
+  <tr><td><strong>AI token costs</strong></td><td>Extraction, chat, and matching calls consume significant tokens. Costs grow with document volume per tender.</td><td>Implement token budgets per operation; cache responses; use lighter models for classification tasks; monitor spend</td></tr>
+  <tr><td><strong>Document parsing quality</strong></td><td>PDF text extraction is unreliable for scanned documents, tables, complex layouts common in Italian public procurement.</td><td>Add OCR pipeline; implement quality checks on extracted text; allow manual text correction</td></tr>
+</table>
+
+<hr>
+
+<h2>6. Recommended Sequencing</h2>
+
+<div class="sequence-box">Phase 0: Discovery (20h)
+    ↓
+Phase 1: Core Product (Area 1 + Area 2 — in parallel)       ~50h
+    ↓
+Phase 2: Document Intelligence (Area 3)                      ~36h
+    ↓
+Phase 3: Production Readiness (Area 4)                        ~48h</div>
+
+<p><strong>Rationale:</strong> Discovery must come first to validate direction. Chat and requirements dashboard are the product's core — build them in parallel. Document intelligence unlocks the differentiating value (bando intelligence, source traceability). Platform hardening and admin wrap up before launch.</p>
+
+<hr>
+
+<h2>7. Deliverables</h2>
+
+<table>
+  <tr><th>Phase</th><th>Deliverable</th></tr>
+  <tr><td>Discovery</td><td>Product brief, wireframes, clickable prototype, finalized backlog</td></tr>
+  <tr><td>Phase 1</td><td>Refined chat interface, redesigned requirements dashboard, output editor with export</td></tr>
+  <tr><td>Phase 2</td><td>In-app document viewer, source-linked requirements, bando + company intelligence, LLM benchmarks</td></tr>
+  <tr><td>Phase 3</td><td>Admin panel, test suite, CI/CD pipeline, monitoring, documentation, production deployment</td></tr>
+</table>
+
+<hr>
+
+<h2>8. Assumptions &amp; Exclusions</h2>
+
+<p><strong>Assumptions:</strong></p>
+<ul>
+  <li>Client provides access to real tender documents for testing during development</li>
+  <li>Estimates assume dedicated development resources</li>
+</ul>
+
+<p><strong>Exclusions:</strong></p>
+<ul>
+  <li>Mobile app (responsive web only)</li>
+  <li>Economic proposal generation (only technical proposal in scope)</li>
+  <li>Integration with third-party procurement platforms (e.g., ANAC, MePA)</li>
+  <li>Custom AI model training or fine-tuning</li>
+  <li>Data migration from other tools</li>
+</ul>
+
+<hr>
+
+<h2>9. Estimated Running Costs</h2>
+
+<p>Monthly operational costs to keep the platform running after go-live.</p>
+
+<h3>Infrastructure</h3>
+
+<table>
+  <tr><th>Service</th><th>What it covers</th><th>Estimated Monthly</th></tr>
+  <tr><td>Cloud hosting</td><td>Application server, serverless functions, CDN, SSL</td><td>€20–50</td></tr>
+  <tr><td>Database</td><td>Reads, writes, storage</td><td>€30–80</td></tr>
+  <tr><td>Object storage</td><td>Document files (PDFs, DOCs), generated exports</td><td>€10–25</td></tr>
+  <tr><td>Email service</td><td>Authentication, notifications</td><td>€0–20</td></tr>
+  <tr><td>Error tracking &amp; monitoring</td><td>Error reporting, uptime monitoring</td><td>€0–30</td></tr>
+  <tr><td>Domain &amp; DNS</td><td>Custom domain, DNS management</td><td>~€5</td></tr>
+  <tr class="summary-row"><td><strong>Infrastructure subtotal</strong></td><td></td><td><strong>€70–200/month</strong></td></tr>
+</table>
+
+<h3>AI API Costs</h3>
+
+<table>
+  <tr><th>Activity</th><th>Cost per operation (approx.)</th></tr>
+  <tr><td>Document classification</td><td>€0.01–0.05</td></tr>
+  <tr><td>Full requirement extraction</td><td>€0.10–0.50</td></tr>
+  <tr><td>Chat message (with context)</td><td>€0.02–0.10</td></tr>
+  <tr><td>Requirement–evidence matching</td><td>€0.10–0.40</td></tr>
+  <tr><td>Draft section generation</td><td>€0.10–0.50</td></tr>
+</table>
+
+<p>Estimated monthly AI cost depends on usage volume:</p>
+
+<table>
+  <tr><th>Usage</th><th>Tenders/month</th><th>Estimated AI Cost/month</th></tr>
+  <tr><td>Standard</td><td>3–5 tenders</td><td>€80–200</td></tr>
+  <tr><td>Active</td><td>8–15 tenders</td><td>€200–500</td></tr>
+  <tr><td>Heavy</td><td>20+ tenders</td><td>€500–1,000</td></tr>
+</table>
+
+<h3>Total Estimated Running Cost</h3>
+
+<table>
+  <tr><th></th><th>Monthly</th><th>Annual</th></tr>
+  <tr><td>Infrastructure</td><td>€70–200</td><td>€840–2,400</td></tr>
+  <tr><td>AI API</td><td>€80–500</td><td>€960–6,000</td></tr>
+  <tr class="summary-row"><td><strong>Total</strong></td><td><strong>€150–700</strong></td><td><strong>€1,800–8,400</strong></td></tr>
+</table>
+
+<hr>
+
+<h2>10. Commercial Proposal — 3-Year Agreement</h2>
+
+<h3>Deal Structure: ~€100K / 3 Years</h3>
+
+<p>The platform is delivered as a <strong>fully managed solution</strong>. The client gets a hosted, maintained, and supported product — no infrastructure to manage, no technical operations required. All software licenses, hosting, and AI costs are included.</p>
+
+<h4>Year 1 — Build &amp; Launch: €40,000</h4>
+
+<table>
+  <tr><th>Includes</th><th></th></tr>
+  <tr><td>Discovery phase (20h)</td><td>Product brief, wireframes, backlog</td></tr>
+  <tr><td>Full platform development (134h)</td><td>All 4 macro areas delivered</td></tr>
+  <tr><td>Software licenses &amp; tooling</td><td>All third-party libraries, editor components, CI/CD, monitoring tools</td></tr>
+  <tr><td>Deployment &amp; go-live</td><td>Production environment, DNS, SSL, monitoring</td></tr>
+  <tr><td>Onboarding &amp; training</td><td>User training sessions, admin walkthrough</td></tr>
+  <tr><td>12 months platform access</td><td>Full access from go-live date</td></tr>
+  <tr><td>Infrastructure &amp; AI costs</td><td>Covered for Year 1</td></tr>
+  <tr><td>Standard support</td><td>Bug fixes, security patches, prompt tuning (8–12h/month)</td></tr>
+</table>
+
+<h4>Year 2 — Operate &amp; Improve: €30,000</h4>
+
+<table>
+  <tr><th>Includes</th><th></th></tr>
+  <tr><td>12 months platform access</td><td>Continued full access</td></tr>
+  <tr><td>Software licenses &amp; tooling</td><td>All renewals and updates included</td></tr>
+  <tr><td>Infrastructure &amp; AI costs</td><td>Covered (see usage terms below)</td></tr>
+  <tr><td>Standard support</td><td>Bug fixes, security patches, dependency updates (8–12h/month)</td></tr>
+  <tr><td>Minor improvements</td><td>Small feature enhancements and UX refinements</td></tr>
+  <tr><td>AI model updates</td><td>Test and integrate improved models as they become available</td></tr>
+</table>
+
+<h4>Year 3 — Operate &amp; Improve: €30,000</h4>
+
+<table>
+  <tr><th>Includes</th><th></th></tr>
+  <tr><td>Same as Year 2</td><td>Continued access, support, infra, licenses, and improvements</td></tr>
+</table>
+
+<h3>Usage Terms</h3>
+
+<table>
+  <tr><th>Parameter</th><th>Included</th></tr>
+  <tr><td><strong>User seats</strong></td><td>Up to 15 users</td></tr>
+  <tr><td><strong>Tenders per year</strong></td><td>Up to 50 active tenders</td></tr>
+  <tr><td><strong>Documents per tender</strong></td><td>Up to 30 documents</td></tr>
+  <tr><td><strong>Storage</strong></td><td>Up to 10 GB document storage</td></tr>
+  <tr><td><strong>AI usage</strong></td><td>Included up to Active tier (~€500/month)</td></tr>
+  <tr><td><strong>Support</strong></td><td>8–12h/month standard</td></tr>
+</table>
+
+<p>Usage beyond these parameters is billed separately or triggers a plan adjustment.</p>
+
+<h3>What the Client Gets</h3>
+
+<ul>
+  <li><strong>Zero operational burden</strong> — hosting, database, storage, AI APIs, monitoring, backups, security, and all software licenses are fully managed</li>
+  <li><strong>Continuous improvement</strong> — AI models, prompts, and features are updated throughout the contract</li>
+  <li><strong>Predictable cost</strong> — fixed annual fee, all-inclusive, no surprise bills</li>
+  <li><strong>Data ownership</strong> — client retains full ownership of all uploaded documents and generated outputs</li>
+  <li><strong>Data portability</strong> — full data export available at any time</li>
+</ul>
+
+<h3>Optional Add-Ons</h3>
+
+<table>
+  <tr><th>Add-on</th><th>Description</th><th>Estimated</th></tr>
+  <tr><td>Additional seats</td><td>Beyond 15 users</td><td>€150/seat/year</td></tr>
+  <tr><td>Heavy usage</td><td>&gt;50 tenders/year or &gt;30 docs/tender</td><td>Custom pricing</td></tr>
+  <tr><td>Priority support</td><td>4h response SLA, dedicated channel, 16–20h/month</td><td>+€6,000/year</td></tr>
+  <tr><td>Custom integrations</td><td>ANAC, MePA, or third-party platform connectors</td><td>Scoped separately</td></tr>
+</table>
+
+<hr>
+
+<p><em class="footer">This document is a living estimate. Final scope, hours, pricing, and priorities will be confirmed after the paid discovery phase.</em></p>
+
+</body>
+</html>
